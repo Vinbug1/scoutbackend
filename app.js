@@ -29,7 +29,7 @@ dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
-const api = '/api'; // Based on your SWAGGER_SERVER_URL
+const api = '/api';
 const PORT = process.env.PORT || 4000;
 
 // Middleware
@@ -94,7 +94,7 @@ async function startServer() {
     await prisma.$connect();
     console.log('✅ Connected to the PostgreSQL database');
     
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
       console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
@@ -120,4 +120,3 @@ process.on('SIGTERM', async () => {
   await prisma.$disconnect();
   process.exit(0);
 });
-
