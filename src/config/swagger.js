@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 const baseUrl =
   process.env.SWAGGER_SERVER_URL ||
   (process.env.NODE_ENV === "production"
-    ? "#"
+    ? "https://scoutbackend-xm5k.onrender.com/api"
     : "http://localhost:4000");
 
 const swaggerDefinition = {
