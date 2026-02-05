@@ -1,0 +1,284 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  PLAYER
+  SCOUT
+  ADMIN
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+enum ParticipantStatus {
+  ACTIVE
+  COMPLETED
+  DROPPED
+  PAUSED
+}
+
+model User {
+  id         Int        @id @default(autoincrement())
+  email      String     @unique
+  password   String
+  fullname   String
+  role       Role       @default(PLAYER)
+  createdAt  DateTime   @default(now())
+
+  profile    Profile?
+  videos     Video[]
+  views      VideoView[]
+  comments   Comment[]
+  ratings    Rating[]
+  followers  Follower[]        @relation("Followed")
+  following  Follower[]        @relation("Following")
+  posts      Post[]
+  reports    ScouterReport[]   @relation("ReportsByScouter")
+  reportsScouted ScouterReport[]  @relation("ReportsAboutScouter")
+  reportsAbout PlayerReport[]  @relation("ReportsAboutPlayer")
+  payments   Payment[]
+  rankings   Ranking[]
+  chatMessages ChatMessage[]
+  challengesCreated Challenge[] @relation("ChallengeCreator")
+  challengesJoined  ChallengeParticipant[]
+
+}
+
+model Profile {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @unique
+  user          User      @relation(fields: [userId], references: [id])
+
+  position      String?
+  height        Float?
+  favouriteFoot String?
+  strengths     String?
+  gender        String?
+  country       String?
+  city          String?
+  dob           DateTime?
+  bio           String?
+  createdAt     DateTime  @default(now())
+}
+
+model Video {
+  id           Int         @id @default(autoincrement())
+  videoUrl     String
+  thumbnailUrl String?
+  title        String
+  description  String?
+  published    Boolean     @default(false)
+  durationSec  Int?
+  createdAt    DateTime    @default(now())
+
+  playerId     Int
+  player       User        @relation(fields: [playerId], references: [id])
+
+  views        VideoView[]
+  comments     Comment[]
+  ratings      Rating[]
+
+  @@index([playerId])
+  @@index([createdAt])
+}
+
+model VideoView {
+  id        Int      @id @default(autoincrement())
+  videoId   Int
+  userId    Int?
+  ipHash    String?
+  viewedAt  DateTime  @default(now())
+
+  video     Video     @relation(fields: [videoId], references: [id])
+  user      User?     @relation(fields: [userId], references: [id])
+
+  @@index([videoId])
+  @@index([userId])
+  @@unique([videoId, userId], name: "unique_view_per_user")
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  text      String
+  createdAt DateTime @default(now())
+
+  videoId   Int?
+  postId    Int?
+  userId    Int
+
+  video     Video?   @relation(fields: [videoId], references: [id])
+  post      Post?    @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([videoId])
+  @@index([postId])
+}
+
+model Rating {
+  id        Int      @id @default(autoincrement())
+  score     Int
+  createdAt DateTime @default(now())
+
+  videoId   Int
+  userId    Int
+
+  video     Video    @relation(fields: [videoId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([videoId, userId])
+  @@index([videoId])
+}
+
+model Ranking {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  score     Float    @default(0)
+  reason    String?
+  updatedAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([score])
+  @@unique([userId])
+}
+
+model Challenge {
+  id           Int       @id @default(autoincrement())
+  title        String
+  description  String?
+  startAt      DateTime?
+  endAt        DateTime?
+  createdAt    DateTime  @default(now())
+  targetProgress Float @default(100) // What percentage counts as "complete"
+
+  creatorId    Int
+  creator      User      @relation("ChallengeCreator", fields: [creatorId], references: [id])
+
+  participants ChallengeParticipant[]
+}
+
+model ChallengeParticipant {
+  id            Int       @id @default(autoincrement())
+  challengeId   Int
+  userId        Int
+  joinedAt      DateTime  @default(now())
+  completedAt   DateTime?
+  progress      Float     @default(0) // 0-100 percentage
+  status        ParticipantStatus @default(ACTIVE)
+  
+  challenge     Challenge @relation(fields: [challengeId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  
+  // Track individual task/milestone completions
+  progressLogs  ProgressLog[]
+  
+  @@unique([challengeId, userId])
+  @@index([status])
+  @@index([progress])
+}
+
+model ProgressLog {
+  id            Int       @id @default(autoincrement())
+  participantId Int
+  taskId        Int?      // optional: if challenge has specific tasks
+  description   String
+  progressDelta Float     // how much progress this added (e.g., 10 for 10%)
+  createdAt     DateTime  @default(now())
+  
+  participant   ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+}
+
+
+
+
+model ChatRoom {
+  id        Int       @id @default(autoincrement())
+  name      String?
+  createdAt DateTime  @default(now())
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  roomId    Int
+  userId    Int
+  message   String
+  sentAt    DateTime @default(now())
+
+  room      ChatRoom @relation(fields: [roomId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([roomId])
+  @@index([userId])
+}
+
+model Post {
+  id        Int       @id @default(autoincrement())
+  content   String
+  createdAt DateTime  @default(now())
+  userId    Int
+
+  user      User      @relation(fields: [userId], references: [id])
+  comments  Comment[]
+}
+
+model Follower {
+  id         Int    @id @default(autoincrement())
+  followerId Int
+  followedId Int
+  followedAt DateTime @default(now())
+
+  follower   User   @relation("Following", fields: [followerId], references: [id])
+  followed   User   @relation("Followed", fields: [followedId], references: [id])
+
+  @@unique([followerId, followedId])
+  @@index([followedId])
+  @@index([followerId])
+}
+
+model ScouterReport {
+  id         Int      @id @default(autoincrement())
+  scouterId  Int
+  playerId   Int
+  title      String?
+  report     String
+  createdAt  DateTime @default(now())
+
+  scouter    User     @relation("ReportsByScouter", fields: [scouterId], references: [id])
+  player     User     @relation("ReportsAboutScouter", fields: [playerId], references: [id])
+
+  @@index([playerId])
+  @@index([scouterId])
+}
+
+model PlayerReport {
+  id        Int      @id @default(autoincrement())
+  playerId  Int
+  data      Json
+  createdAt DateTime @default(now())
+
+  player    User     @relation("ReportsAboutPlayer", fields: [playerId], references: [id])
+}
+
+model Payment {
+  id          Int           @id @default(autoincrement())
+  userId      Int
+  amount      Float
+  currency    String        @default("USD")
+  status      PaymentStatus @default(PENDING)
+  providerRef String?
+  createdAt   DateTime      @default(now())
+
+  user        User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
