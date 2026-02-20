@@ -1,5 +1,3 @@
-// routes/userRoutes.js
-
 import express from "express";
 import userController from "../controllers/userController.js";
 import { verifyToken as authenticate, authorizeRoles } from "../middleware/auth.js";
