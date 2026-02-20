@@ -1,6 +1,8 @@
 // Import dependencies using ESM
-import express from 'express';
 import dotenv from 'dotenv';
+dotenv.config(); // ✅ MUST be first before everything else
+
+import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import swaggerUi from 'swagger-ui-express';
@@ -24,9 +26,6 @@ import videoRouters from './src/routes/videoRouters.js';
 import videoViewRouters from './src/routes/videoViewRouters.js';
 import swaggerSpec from './src/config/swagger.js';
 
-// Load environment variables
-dotenv.config();
-
 const app = express();
 const prisma = new PrismaClient();
 const api = '/api';
@@ -39,7 +38,7 @@ app.use(cors());
 // Swagger docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Health check route
+// Health check routes
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Scout Backend API is running!', 
@@ -56,7 +55,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Define routes - FIXED: Use parentheses () not backticks ``
+// Routes
 app.use(`${api}/users`, userRouters);
 app.use(`${api}/challengeParticipants`, challengeParticipantRouters);
 app.use(`${api}/challenges`, challengeRouters);
@@ -88,17 +87,16 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server and check DB connection
+// Start server
 async function startServer() {
   try {
     await prisma.$connect();
     console.log('✅ Connected to the PostgreSQL database');
-    
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-      console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-      console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
+      console.log(`📚 API Docs: https://scoutbackend-xm5k.onrender.com/api-docs`);
+      console.log(`🏥 Health Check: https://scoutbackend-xm5k.onrender.com/health`);
     });
   } catch (error) {
     console.error('❌ Failed to connect to the database:', error);
@@ -110,13 +108,11 @@ startServer();
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
   await prisma.$disconnect();
   process.exit(0);
 });
