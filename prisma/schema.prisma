@@ -33,6 +33,11 @@ model User {
   role       Role       @default(PLAYER)
   createdAt  DateTime   @default(now())
 
+  // OTP Verification fields
+  otp           String?
+  otpExpiry     DateTime?
+  isVerified    Boolean   @default(false)
+
   profile    Profile?
   videos     Video[]
   views      VideoView[]
@@ -49,7 +54,6 @@ model User {
   chatMessages ChatMessage[]
   challengesCreated Challenge[] @relation("ChallengeCreator")
   challengesJoined  ChallengeParticipant[]
-
 }
 
 model Profile {
