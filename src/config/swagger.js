@@ -12,9 +12,8 @@ const baseUrl =
     ? "https://scoutbackend-xm5k.onrender.com"
     : "http://localhost:4000";
 
-// Debug log to confirm paths are resolving correctly
 console.log("📁 Swagger scanning routes at:", path.resolve(__dirname, "../routes/*.js"));
-console.log("🌍 Swagger base URL:", baseUrl);
+console.log("🌍 Swagger base URL:", `${baseUrl}/api`);
 
 const swaggerDefinition = {
   openapi: "3.0.0",
@@ -29,7 +28,7 @@ const swaggerDefinition = {
   },
   servers: [
     {
-      url: baseUrl,
+      url: `${baseUrl}/api`, // ✅ fixed
       description:
         process.env.NODE_ENV === "production"
           ? "Production server"
@@ -51,14 +50,13 @@ const swaggerDefinition = {
 const options = {
   swaggerDefinition,
   apis: [
-    path.resolve(__dirname, "../routes/*.js"),      // src/routes/*.js
-    path.resolve(__dirname, "../routes/**/*.js"),   // src/routes/sub-folders
+    path.resolve(__dirname, "../routes/*.js"),
+    path.resolve(__dirname, "../routes/**/*.js"),
   ],
 };
 
 const swaggerSpec = swaggerJSDoc(options);
 
-// Debug: confirm swagger found some endpoints
 console.log("📚 Swagger paths found:", Object.keys(swaggerSpec.paths || {}).length);
 
 export default swaggerSpec;
