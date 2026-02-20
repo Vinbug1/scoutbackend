@@ -26,33 +26,27 @@ const router = express.Router();
  *       properties:
  *         id:
  *           type: integer
- *           description: Auto-generated user ID
  *         email:
  *           type: string
  *           format: email
- *           description: User's email address
  *         password:
  *           type: string
  *           format: password
- *           description: User's password (hashed)
  *         fullname:
  *           type: string
- *           description: User's full name
  *         role:
  *           type: string
  *           enum: [PLAYER, SCOUT, ADMIN]
- *           description: User's role in the system
  *         createdAt:
  *           type: string
  *           format: date-time
- *           description: Account creation timestamp
  *       example:
  *         id: 1
  *         email: user@example.com
  *         fullname: John Doe
  *         role: PLAYER
  *         createdAt: 2024-01-01T00:00:00.000Z
- * 
+ *
  *     RegisterInput:
  *       type: object
  *       required:
@@ -67,20 +61,18 @@ const router = express.Router();
  *           type: string
  *           format: password
  *           minLength: 6
- *           description: Must be at least 6 characters long
  *         fullname:
  *           type: string
  *         role:
  *           type: string
- *           enum: [player, scout, admin, PLAYER, SCOUT, ADMIN]
+ *           enum: [PLAYER, SCOUT, ADMIN]
  *           default: PLAYER
- *           description: User role (case insensitive, defaults to PLAYER)
  *       example:
  *         email: player@example.com
  *         password: securePassword123
  *         fullname: John Doe
- *         role: player
- * 
+ *         role: PLAYER
+ *
  *     LoginInput:
  *       type: object
  *       required:
@@ -96,7 +88,7 @@ const router = express.Router();
  *       example:
  *         email: player@example.com
  *         password: securePassword123
- * 
+ *
  *     AuthResponse:
  *       type: object
  *       properties:
@@ -118,7 +110,6 @@ const router = express.Router();
  *               format: date-time
  *         token:
  *           type: string
- *           description: JWT token for authentication
  *       example:
  *         message: Login successful
  *         user:
@@ -128,7 +119,68 @@ const router = express.Router();
  *           role: PLAYER
  *           createdAt: 2024-01-01T00:00:00.000Z
  *         token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- * 
+ *
+ *     OtpInput:
+ *       type: object
+ *       required:
+ *         - email
+ *         - otp
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *         otp:
+ *           type: string
+ *           minLength: 6
+ *           maxLength: 6
+ *       example:
+ *         email: player@example.com
+ *         otp: "482910"
+ *
+ *     ForgotPasswordInput:
+ *       type: object
+ *       required:
+ *         - email
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *       example:
+ *         email: player@example.com
+ *
+ *     ResetPasswordInput:
+ *       type: object
+ *       required:
+ *         - resetToken
+ *         - newPassword
+ *       properties:
+ *         resetToken:
+ *           type: string
+ *         newPassword:
+ *           type: string
+ *           format: password
+ *           minLength: 6
+ *       example:
+ *         resetToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *         newPassword: newSecurePassword123
+ *
+ *     UpdatePasswordInput:
+ *       type: object
+ *       required:
+ *         - currentPassword
+ *         - newPassword
+ *       properties:
+ *         currentPassword:
+ *           type: string
+ *           format: password
+ *         newPassword:
+ *           type: string
+ *           format: password
+ *           minLength: 6
+ *       example:
+ *         currentPassword: oldPassword123
+ *         newPassword: newSecurePassword123
+ *
  *     UserInput:
  *       type: object
  *       required:
@@ -153,7 +205,7 @@ const router = express.Router();
  *         password: securePassword123
  *         fullname: John Doe
  *         role: PLAYER
- * 
+ *
  *     UserUpdate:
  *       type: object
  *       properties:
@@ -172,7 +224,7 @@ const router = express.Router();
  *       example:
  *         email: newemail@example.com
  *         fullname: Jane Doe
- * 
+ *
  *     Error:
  *       type: object
  *       properties:
@@ -186,9 +238,11 @@ const router = express.Router();
  * @swagger
  * tags:
  *   - name: Authentication
- *     description: User authentication endpoints (register, login)
+ *     description: Register, login, OTP verification
+ *   - name: Password
+ *     description: Forgot password, reset password, update password
  *   - name: Users
- *     description: User management endpoints (CRUD operations)
+ *     description: User management (CRUD - Admin only)
  */
 
 // ========================================
@@ -201,16 +255,16 @@ const router = express.Router();
  *   post:
  *     summary: Register a new user
  *     tags: [Authentication]
- *     description: Create a new user account. Returns user info and JWT token.
+ *     description: Creates a new account and sends a 6-digit OTP to the user's email for verification.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/RegisterInput'
-//  *     responses:
+ *     responses:
  *       201:
- *         description: Registration successful
+ *         description: Registration successful. OTP sent to email.
  *         content:
  *           application/json:
  *             schema:
@@ -221,25 +275,8 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- *             examples:
- *               emailInUse:
- *                 value:
- *                   message: Email already in use
- *               invalidRole:
- *                 value:
- *                   message: "Invalid role. Must be one of: PLAYER, SCOUT, ADMIN"
- *               invalidEmail:
- *                 value:
- *                   message: Invalid email format
- *               weakPassword:
- *                 value:
- *                   message: Password must be at least 6 characters long
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 router.post("/register", userController.register);
 
@@ -249,7 +286,7 @@ router.post("/register", userController.register);
  *   post:
  *     summary: Login user
  *     tags: [Authentication]
- *     description: Authenticate user and receive JWT token
+ *     description: Authenticate user and receive a JWT token.
  *     requestBody:
  *       required: true
  *       content:
@@ -265,28 +302,175 @@ router.post("/register", userController.register);
  *               $ref: '#/components/schemas/AuthResponse'
  *       400:
  *         description: Missing required fields
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               message: Email and password are required
  *       401:
  *         description: Invalid credentials
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               message: Invalid email or password
  *       500:
  *         description: Server error
+ */
+router.post("/login", userController.login);
+
+/**
+ * @swagger
+ * /users/verify-otp:
+ *   post:
+ *     summary: Verify account OTP
+ *     tags: [Authentication]
+ *     description: Verifies the 6-digit OTP sent to the user's email after registration.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/OtpInput'
+ *     responses:
+ *       200:
+ *         description: Account verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example:
+ *                 message: Account verified successfully!
+ *       400:
+ *         description: Invalid or expired OTP
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
  */
-router.post("/login", userController.login);
+router.post("/verify-otp", userController.verifyOTP);
+
+/**
+ * @swagger
+ * /users/resend-otp:
+ *   post:
+ *     summary: Resend verification OTP
+ *     tags: [Authentication]
+ *     description: Resends a new 6-digit OTP to the user's email.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ForgotPasswordInput'
+ *     responses:
+ *       200:
+ *         description: New OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example:
+ *                 message: A new OTP has been sent to your email.
+ *       400:
+ *         description: Account already verified
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/resend-otp", userController.resendOTP);
+
+/**
+ * @swagger
+ * /users/forgot-password:
+ *   post:
+ *     summary: Request a password reset OTP
+ *     tags: [Password]
+ *     description: Sends a 6-digit OTP to the user's email to initiate a password reset.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ForgotPasswordInput'
+ *     responses:
+ *       200:
+ *         description: Reset OTP sent (response is the same whether email exists or not for security)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example:
+ *                 message: If this email exists, a reset code has been sent.
+ *       500:
+ *         description: Server error
+ */
+router.post("/forgot-password", userController.forgotPassword);
+
+/**
+ * @swagger
+ * /users/verify-reset-otp:
+ *   post:
+ *     summary: Verify password reset OTP
+ *     tags: [Password]
+ *     description: Verifies the OTP sent for password reset. Returns a short-lived resetToken (valid 15 min).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/OtpInput'
+ *     responses:
+ *       200:
+ *         description: OTP verified. Reset token returned.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 resetToken:
+ *                   type: string
+ *               example:
+ *                 message: OTP verified. Use the reset token to set a new password.
+ *                 resetToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *       400:
+ *         description: Invalid or expired OTP
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/verify-reset-otp", userController.verifyResetOTP);
+
+/**
+ * @swagger
+ * /users/reset-password:
+ *   post:
+ *     summary: Reset password using reset token
+ *     tags: [Password]
+ *     description: Sets a new password using the resetToken received from verify-reset-otp.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ResetPasswordInput'
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example:
+ *                 message: Password reset successfully. You can now log in.
+ *       400:
+ *         description: Missing fields or weak password
+ *       401:
+ *         description: Invalid or expired reset token
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/reset-password", userController.resetPassword);
 
 // ========================================
 // PROTECTED ROUTES (Authentication required)
@@ -298,46 +482,58 @@ router.post("/login", userController.login);
  *   get:
  *     summary: Get current user profile
  *     tags: [Users]
- *     description: Get the profile of the currently authenticated user
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Current user profile retrieved successfully
+ *         description: Current user profile
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/User'
  *       401:
  *         description: Not authenticated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             examples:
- *               noToken:
- *                 value:
- *                   message: No token provided
- *               invalidToken:
- *                 value:
- *                   message: Invalid token
- *               expiredToken:
- *                 value:
- *                   message: Token expired
  *       404:
  *         description: User not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
+ */
+router.get("/me", authenticate, userController.getCurrentUser);
+
+/**
+ * @swagger
+ * /users/update-password:
+ *   put:
+ *     summary: Update password (logged-in user)
+ *     tags: [Password]
+ *     description: Allows an authenticated user to change their own password by providing their current password.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdatePasswordInput'
+ *     responses:
+ *       200:
+ *         description: Password updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               type: object
+ *               example:
+ *                 message: Password updated successfully.
+ *       400:
+ *         description: Missing fields, weak password, or same as current
+ *       401:
+ *         description: Current password is incorrect or not authenticated
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
  */
-router.get("/me", authenticate, userController.getCurrentUser);
+router.put("/update-password", authenticate, userController.updatePassword);
 
 /**
  * @swagger
@@ -345,7 +541,6 @@ router.get("/me", authenticate, userController.getCurrentUser);
  *   get:
  *     summary: Get a user by ID
  *     tags: [Users]
- *     description: Retrieve detailed information about a specific user
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -357,29 +552,17 @@ router.get("/me", authenticate, userController.getCurrentUser);
  *         description: User ID
  *     responses:
  *       200:
- *         description: User details retrieved successfully
+ *         description: User details
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/User'
  *       401:
  *         description: Not authenticated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       404:
  *         description: User not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 router.get("/:id", authenticate, userController.getUserById);
 
@@ -393,7 +576,6 @@ router.get("/:id", authenticate, userController.getUserById);
  *   post:
  *     summary: Create a new user (Admin only)
  *     tags: [Users]
- *     description: Create a new user. Only accessible by administrators.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -405,36 +587,14 @@ router.get("/:id", authenticate, userController.getUserById);
  *     responses:
  *       201:
  *         description: User created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
  *       400:
  *         description: Email already in use or invalid role
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       401:
  *         description: Not authenticated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       403:
- *         description: Insufficient permissions (not an admin)
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               message: You don't have permission to access this resource
+ *         description: Insufficient permissions
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 router.post("/", authenticate, authorizeRoles('ADMIN'), userController.createUser);
 
@@ -444,12 +604,11 @@ router.post("/", authenticate, authorizeRoles('ADMIN'), userController.createUse
  *   get:
  *     summary: Get all users (Admin only)
  *     tags: [Users]
- *     description: Retrieve a list of all users. Only accessible by administrators.
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of users retrieved successfully
+ *         description: List of all users
  *         content:
  *           application/json:
  *             schema:
@@ -458,22 +617,10 @@ router.post("/", authenticate, authorizeRoles('ADMIN'), userController.createUse
  *                 $ref: '#/components/schemas/User'
  *       401:
  *         description: Not authenticated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       403:
- *         description: Insufficient permissions (not an admin)
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Insufficient permissions
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 router.get("/", authenticate, authorizeRoles('ADMIN'), userController.getUsers);
 
@@ -483,7 +630,6 @@ router.get("/", authenticate, authorizeRoles('ADMIN'), userController.getUsers);
  *   put:
  *     summary: Update a user (Admin only)
  *     tags: [Users]
- *     description: Update user information. Only provided fields will be updated. Only accessible by administrators.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -502,40 +648,16 @@ router.get("/", authenticate, authorizeRoles('ADMIN'), userController.getUsers);
  *     responses:
  *       200:
  *         description: User updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
  *       400:
  *         description: Invalid role
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       401:
  *         description: Not authenticated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       403:
- *         description: Insufficient permissions (not an admin)
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Insufficient permissions
  *       404:
  *         description: User not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 router.put("/:id", authenticate, authorizeRoles('ADMIN'), userController.updateUser);
 
@@ -545,7 +667,6 @@ router.put("/:id", authenticate, authorizeRoles('ADMIN'), userController.updateU
  *   delete:
  *     summary: Delete a user (Admin only)
  *     tags: [Users]
- *     description: Permanently delete a user from the system. Only accessible by administrators.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -558,39 +679,14 @@ router.put("/:id", authenticate, authorizeRoles('ADMIN'), userController.updateU
  *     responses:
  *       200:
  *         description: User deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *               example:
- *                 message: User deleted successfully
  *       401:
  *         description: Not authenticated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       403:
- *         description: Insufficient permissions (not an admin)
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Insufficient permissions
  *       404:
  *         description: User not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 router.delete("/:id", authenticate, authorizeRoles('ADMIN'), userController.deleteUser);
 
