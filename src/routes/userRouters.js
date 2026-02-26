@@ -594,7 +594,7 @@ router.get("/:id", authenticate, userController.getUserById);
  *       500:
  *         description: Server error
  */
-router.post("/", userController.createUser);
+// router.post("/", userController.createUser);
 
 /**
  * @swagger
