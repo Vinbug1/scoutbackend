@@ -56,24 +56,8 @@ const UserController = {
       }
       
       // // Hash password
-      // const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = await bcrypt.hash(password, 10);
       
-      // const user = await prisma.user.create({
-      //   data: {
-      //     email,
-      //     password: hashedPassword,
-      //     fullname,
-      //     role: roleUpper,
-      //   },
-      //   select: {
-      //     id: true,
-      //     email: true,
-      //     fullname: true,
-      //     role: true,
-      //     createdAt: true,
-      //     // Don't return password
-      //   }
-      // });
 
 
         // Generate OTP + expiry
@@ -551,49 +535,49 @@ const UserController = {
   // ===========================
   // CREATE USER (Admin only)
   // ===========================
-  async createUser(req, res) {
-    try {
-      const { email, password, fullname, role } = req.body;
+  // async createUser(req, res) {
+  //   try {
+  //     const { email, password, fullname, role } = req.body;
       
-      // Check for duplicates
-      const existing = await prisma.user.findUnique({ where: { email } });
-      if (existing) {
-        return res.status(400).json({ message: "Email already in use" });
-      }
+  //     // Check for duplicates
+  //     const existing = await prisma.user.findUnique({ where: { email } });
+  //     if (existing) {
+  //       return res.status(400).json({ message: "Email already in use" });
+  //     }
       
-      // Validate and normalize role
-      const roleUpper = role?.toUpperCase() || 'PLAYER';
-      if (!VALID_ROLES.includes(roleUpper)) {
-        return res.status(400).json({ 
-          message: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` 
-        });
-      }
+  //     // Validate and normalize role
+  //     const roleUpper = role?.toUpperCase() || 'PLAYER';
+  //     if (!VALID_ROLES.includes(roleUpper)) {
+  //       return res.status(400).json({ 
+  //         message: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` 
+  //       });
+  //     }
       
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, 10);
+  //     // Hash password
+  //     const hashedPassword = await bcrypt.hash(password, 10);
       
-      const user = await prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          fullname,
-          role: roleUpper,
-        },
-        select: {
-          id: true,
-          email: true,
-          fullname: true,
-          role: true,
-          createdAt: true,
-        }
-      });
+  //     const user = await prisma.user.create({
+  //       data: {
+  //         email,
+  //         password: hashedPassword,
+  //         fullname,
+  //         role: roleUpper,
+  //       },
+  //       select: {
+  //         id: true,
+  //         email: true,
+  //         fullname: true,
+  //         role: true,
+  //         createdAt: true,
+  //       }
+  //     });
       
-      res.status(201).json(user);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Server error" });
-    }
-  },
+  //     res.status(201).json(user);
+  //   } catch (error) {
+  //     console.error(error);
+  //     res.status(500).json({ message: "Server error" });
+  //   }
+  // },
 
   // ===========================
   // GET ALL USERS
