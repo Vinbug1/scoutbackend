@@ -594,7 +594,7 @@ router.get("/:id", authenticate, userController.getUserById);
  *       500:
  *         description: Server error
  */
-router.post("/", authenticate, authorizeRoles('ADMIN'), userController.createUser);
+router.post("/", userController.createUser);
 
 /**
  * @swagger
@@ -620,7 +620,7 @@ router.post("/", authenticate, authorizeRoles('ADMIN'), userController.createUse
  *       500:
  *         description: Server error
  */
-router.get("/", authenticate, authorizeRoles('ADMIN'), userController.getUsers);
+router.get("/", userController.getUsers);
 
 /**
  * @swagger
@@ -657,7 +657,7 @@ router.get("/", authenticate, authorizeRoles('ADMIN'), userController.getUsers);
  *       500:
  *         description: Server error
  */
-router.put("/:id", authenticate, authorizeRoles('ADMIN'), userController.updateUser);
+router.put("/:id", userController.updateUser);
 
 /**
  * @swagger
