@@ -1,7 +1,6 @@
 import express from 'express';
 const router = express.Router();
 import profileController from '../controllers/profileController.js';
-import { authMiddleware } from '../middleware/authMiddleware.js';  // 👈 add this
 import multer from 'multer';                                        // 👈 add this
 
 const upload = multer({ storage: multer.memoryStorage() });         // 👈 add this
@@ -372,7 +371,7 @@ router.delete("/:id", profileController.deleteProfile);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/avatar", authMiddleware, upload.single("avatar"), profileController.uploadAvatar);
+router.post("/avatar", upload.single("avatar"), profileController.uploadAvatar);
 
 
 export default router;
