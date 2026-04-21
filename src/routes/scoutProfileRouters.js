@@ -1,7 +1,6 @@
 import express from 'express';
 const router = express.Router();
 import scoutProfileController from '../controllers/scoutProfileController.js';
-import { authMiddleware } from '../middleware/authMiddleware.js';  // 👈 add this
 import multer from 'multer';                                        // 👈 add this
 
 const upload = multer({ storage: multer.memoryStorage() }); 
@@ -372,7 +371,7 @@ router.delete("/:id", scoutProfileController.deleteScoutProfile);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/avatar", authMiddleware, upload.single("avatar"), scoutProfileController.uploadAvatar);
+router.post("/avatar", upload.single("avatar"), scoutProfileController.uploadAvatar);
 
 
 export default router;
