@@ -39,6 +39,7 @@ model User {
   isVerified    Boolean   @default(false)
 
   profile    Profile?
+  scoutProfile    ScoutProfile?
   videos     Video[]
   views      VideoView[]
   comments   Comment[]
@@ -47,11 +48,11 @@ model User {
   following  Follower[]        @relation("Following")
   posts      Post[]
   reports    ScouterReport[]   @relation("ReportsByScouter")
-  reportsScouted ScouterReport[]  @relation("ReportsAboutScouter")
-  reportsAbout PlayerReport[]  @relation("ReportsAboutPlayer")
-  payments   Payment[]
+  reportsAboutMe ScouterReport[] @relation("ReportsAboutScouter")  // 👈 match the name in ScouterReport
+  reportsAboutMe    ScouterReport[]        @relation("ReportsAboutScouter")  payments   Payment[]
   rankings   Ranking[]
   chatMessages ChatMessage[]
+  chatRoomMembers ChatRoomMember[]   // 👈 add this
   challengesCreated Challenge[] @relation("ChallengeCreator")
   challengesJoined  ChallengeParticipant[]
 }
@@ -61,6 +62,7 @@ model Profile {
   userId        Int       @unique
   user          User      @relation(fields: [userId], references: [id])
 
+  avatarUrl     String?
   position      String?
   height        Float?
   favouriteFoot String?
@@ -69,6 +71,20 @@ model Profile {
   country       String?
   city          String?
   dob           DateTime?
+  bio           String?
+  createdAt     DateTime  @default(now())
+}
+
+model ScoutProfile {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @unique
+  user          User      @relation(fields: [userId], references: [id])
+
+  avatarUrl     String?
+  club          String?
+  country       String?
+  city          String?
+  address       String?
   bio           String?
   createdAt     DateTime  @default(now())
 }
@@ -161,7 +177,7 @@ model Challenge {
   startAt      DateTime?
   endAt        DateTime?
   createdAt    DateTime  @default(now())
-  targetProgress Float @default(100) // What percentage counts as "complete"
+  targetProgress Float @default(100)
 
   creatorId    Int
   creator      User      @relation("ChallengeCreator", fields: [creatorId], references: [id])
@@ -175,13 +191,12 @@ model ChallengeParticipant {
   userId        Int
   joinedAt      DateTime  @default(now())
   completedAt   DateTime?
-  progress      Float     @default(0) // 0-100 percentage
+  progress      Float     @default(0)
   status        ParticipantStatus @default(ACTIVE)
   
   challenge     Challenge @relation(fields: [challengeId], references: [id])
   user          User      @relation(fields: [userId], references: [id])
   
-  // Track individual task/milestone completions
   progressLogs  ProgressLog[]
   
   @@unique([challengeId, userId])
@@ -192,22 +207,21 @@ model ChallengeParticipant {
 model ProgressLog {
   id            Int       @id @default(autoincrement())
   participantId Int
-  taskId        Int?      // optional: if challenge has specific tasks
+  taskId        Int?
   description   String
-  progressDelta Float     // how much progress this added (e.g., 10 for 10%)
+  progressDelta Float
   createdAt     DateTime  @default(now())
   
   participant   ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 }
-
-
-
 
 model ChatRoom {
   id        Int       @id @default(autoincrement())
   name      String?
   createdAt DateTime  @default(now())
   messages  ChatMessage[]
+  members   ChatRoomMember[]   // 👈 add this
+
 }
 
 model ChatMessage {
@@ -222,6 +236,18 @@ model ChatMessage {
 
   @@index([roomId])
   @@index([userId])
+}
+
+model ChatRoomMember {
+  id        Int      @id @default(autoincrement())
+  roomId    Int
+  userId    Int
+  joinedAt  DateTime @default(now())
+
+  room      ChatRoom @relation(fields: [roomId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
 }
 
 model Post {

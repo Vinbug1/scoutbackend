@@ -36,6 +36,37 @@ const sanitizeFileName = (name) => {
 };
 
 // ========================
+// 🔹 Compress Image by MIME Type
+// ========================
+/**
+ * Compresses an image buffer while preserving format-specific features.
+ * - JPEG → compressed JPEG
+ * - PNG  → compressed PNG (preserves transparency)
+ * - GIF  → returned as-is (Sharp doesn't support animated GIFs)
+ *
+ * @param {Buffer} buffer - Raw image buffer
+ * @param {string} mimeType - Detected MIME type
+ * @returns {Promise<{ buffer: Buffer, mimeType: string, extension: string }>}
+ */
+const compressImage = async (buffer, mimeType) => {
+  const sharpInstance = sharp(buffer).resize({ width: 1024, withoutEnlargement: true });
+
+  if (mimeType === 'image/png') {
+    const compressed = await sharpInstance.png({ quality: 80 }).toBuffer();
+    return { buffer: compressed, mimeType: 'image/png', extension: 'png' };
+  }
+
+  if (mimeType === 'image/gif') {
+    // Skip compression — Sharp does not support animated GIFs
+    return { buffer, mimeType: 'image/gif', extension: 'gif' };
+  }
+
+  // Default: JPEG
+  const compressed = await sharpInstance.jpeg({ quality: 80 }).toBuffer();
+  return { buffer: compressed, mimeType: 'image/jpeg', extension: 'jpg' };
+};
+
+// ========================
 // 🔹 Hybrid Upload to GCS
 // ========================
 /**
@@ -67,33 +98,35 @@ const uploadMediaToGCS = async (input, directory = 'uploads') => {
       throw new Error('Unsupported input type');
     }
 
-    // 🧠 Detect and validate MIME type
-    const detectedType = await fileTypeFromBuffer(buffer);  // ✅ Fixed usage
+    // 🧠 Detect and validate real MIME type from buffer bytes
+    const detectedType = await fileTypeFromBuffer(buffer);
     if (detectedType?.mime) mimeType = detectedType.mime;
 
-    const extension = mimeType.split('/')[1] || 'bin';
-    const fileName = sanitizeFileName(`${directory}/${uuidv4()}.${extension}`);
-    const blob = bucket.file(fileName);
-
+    // ✅ Compress image and resolve final mimeType + extension AFTER compression
     let finalBuffer = buffer;
+    let finalMimeType = mimeType;
+    let finalExtension = mimeType.split('/')[1] || 'bin';
 
-    // ✅ Compress if image
     if (mimeType.startsWith('image/')) {
       try {
-        finalBuffer = await sharp(buffer)
-          .resize({ width: 1024, withoutEnlargement: true })
-          .jpeg({ quality: 80 })
-          .toBuffer();
+        const result = await compressImage(buffer, mimeType);
+        finalBuffer = result.buffer;
+        finalMimeType = result.mimeType;
+        finalExtension = result.extension;
       } catch (err) {
         console.warn('⚠️ Sharp compression failed, uploading raw buffer:', err.message);
       }
     }
 
+    // 🗂️ Build file name using the correct post-compression extension
+    const fileName = sanitizeFileName(`${directory}/${uuidv4()}.${finalExtension}`);
+    const blob = bucket.file(fileName);
+
     // ✅ Upload to GCS
     await new Promise((resolve, reject) => {
       const blobStream = blob.createWriteStream({
         resumable: false,
-        contentType: mimeType,
+        contentType: finalMimeType,
         metadata: { cacheControl: 'public, max-age=31536000' },
       });
       blobStream.on('error', reject);
@@ -123,19 +156,24 @@ const uploadMediaToGCS = async (input, directory = 'uploads') => {
 // ========================
 /**
  * Upload an array of Base64 strings or Multer file objects.
+ * Failed items are skipped and logged rather than failing the whole batch.
+ *
+ * @param {Array<string|object>} inputs - Array of Base64 strings or Multer file objects
+ * @param {string} directory - Folder in bucket
+ * @returns {Promise<Array<{ url: string, fileName: string, sizeKB: number, uploadTimeMS: number }>>}
  */
-const uploadMultipleMediaToGCS = async (inputs, directory = 'uploads') => {
-  if (!Array.isArray(inputs) || inputs.length === 0) return [];
-  const results = await Promise.all(
-    inputs.map((item) =>
-      uploadMediaToGCS(item, directory).catch((err) => {
-        console.error('⚠️ Skipped one media due to error:', err.message);
-        return null;
-      })
-    )
-  );
-  return results.filter(Boolean);
-};
+// const uploadMultipleMediaToGCS = async (inputs, directory = 'uploads') => {
+//   if (!Array.isArray(inputs) || inputs.length === 0) return [];
+//   const results = await Promise.all(
+//     inputs.map((item) =>
+//       uploadMediaToGCS(item, directory).catch((err) => {
+//         console.error('⚠️ Skipped one media due to error:', err.message);
+//         return null;
+//       })
+//     )
+//   );
+//   return results.filter(Boolean);
+// };
 
 // ========================
 // 🔹 Backward Compatibility
@@ -143,17 +181,16 @@ const uploadMultipleMediaToGCS = async (inputs, directory = 'uploads') => {
 const uploadBase64MediaToGCS = async (base64String, directory = 'uploads') =>
   uploadMediaToGCS(base64String, directory);
 
-const uploadMultipleBase64MediaToGCS = async (base64Array, directory = 'uploads') =>
-  uploadMultipleMediaToGCS(base64Array, directory);
+// const uploadMultipleBase64MediaToGCS = async (base64Array, directory = 'uploads') =>
+//   uploadMultipleMediaToGCS(base64Array, directory);
 
 // ========================
 // 🔹 Exports
 // ========================
 export {
-  upload, // Multer middleware
-  uploadMediaToGCS, // Hybrid handler
-  uploadMultipleMediaToGCS, // Hybrid multiple handler
-  uploadBase64MediaToGCS, // Backward compatibility
-  uploadMultipleBase64MediaToGCS, // Backward compatibility
+  upload,                        // Multer middleware
+  uploadMediaToGCS,              // Hybrid single upload handler
+  // uploadMultipleMediaToGCS,      // Hybrid multiple upload handler
+  uploadBase64MediaToGCS,        // Backward compatibility (single)
+  // uploadMultipleBase64MediaToGCS // Backward compatibility (multiple)
 };
-
