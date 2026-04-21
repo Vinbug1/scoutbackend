@@ -162,18 +162,7 @@ const uploadMediaToGCS = async (input, directory = 'uploads') => {
  * @param {string} directory - Folder in bucket
  * @returns {Promise<Array<{ url: string, fileName: string, sizeKB: number, uploadTimeMS: number }>>}
  */
-// const uploadMultipleMediaToGCS = async (inputs, directory = 'uploads') => {
-//   if (!Array.isArray(inputs) || inputs.length === 0) return [];
-//   const results = await Promise.all(
-//     inputs.map((item) =>
-//       uploadMediaToGCS(item, directory).catch((err) => {
-//         console.error('⚠️ Skipped one media due to error:', err.message);
-//         return null;
-//       })
-//     )
-//   );
-//   return results.filter(Boolean);
-// };
+
 
 // ========================
 // 🔹 Backward Compatibility
