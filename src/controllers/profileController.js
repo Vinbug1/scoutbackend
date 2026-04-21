@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma.js';  // or '../config/prisma.js'
-import uploadMediaToGCS from '../config/multer.js'
+import { uploadMediaToGCS } from '../config/multer.js'
 // const prisma = new PrismaClient();
 
 const ProfileController = {
