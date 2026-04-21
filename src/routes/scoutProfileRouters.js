@@ -1,10 +1,10 @@
 import express from 'express';
 const router = express.Router();
-import profileController from '../controllers/profileController.js';
+import scoutProfileController from '../controllers/scoutProfileController.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';  // 👈 add this
 import multer from 'multer';                                        // 👈 add this
 
-const upload = multer({ storage: multer.memoryStorage() });         // 👈 add this
+const upload = multer({ storage: multer.memoryStorage() }); 
 
 /**
  * @swagger
@@ -147,7 +147,7 @@ const upload = multer({ storage: multer.memoryStorage() });         // 👈 add 
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/", profileController.createProfile);
+router.post("/", scoutProfileController.createScoutProfile);
 
 /**
  * @swagger
@@ -177,7 +177,7 @@ router.post("/", profileController.createProfile);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/", profileController.getProfiles);
+router.get("/", scoutProfileController.getScoutProfiles);
 
 /**
  * @swagger
@@ -222,7 +222,7 @@ router.get("/", profileController.getProfiles);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/:id", profileController.getProfileById);
+router.get("/:id", scoutProfileController.getScoutProfileById);
 
 /**
  * @swagger
@@ -283,7 +283,7 @@ router.get("/:id", profileController.getProfileById);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put("/:id", profileController.updateProfile);
+router.put("/:id", scoutProfileController.updateScoutProfile);
 
 /**
  * @swagger
@@ -316,7 +316,7 @@ router.put("/:id", profileController.updateProfile);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.delete("/:id", profileController.deleteProfile);
+router.delete("/:id", scoutProfileController.deleteScoutProfile);
 
 /**
  * @swagger
@@ -372,7 +372,7 @@ router.delete("/:id", profileController.deleteProfile);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/avatar", authMiddleware, upload.single("avatar"), profileController.uploadAvatar);
+router.post("/avatar", authMiddleware, upload.single("avatar"), scoutProfileController.uploadAvatar);
 
 
 export default router;
