@@ -2,8 +2,9 @@ import multer from 'multer';
 import path from 'path';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
-import { fileTypeFromBuffer } from 'file-type';
 import { bucket } from './gcs-config.js';
+import pkg from 'file-type';
+const { fileTypeFromBuffer } = pkg;
 
 // ========================
 // 🔹 Multer Configuration
