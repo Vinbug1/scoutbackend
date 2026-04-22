@@ -78,7 +78,7 @@ const compressImage = async (buffer, mimeType) => {
  * @param {string} directory - Folder in bucket (e.g., 'users', 'listings')
  * @returns {Promise<{ url: string, fileName: string, sizeKB: number, uploadTimeMS: number }>}
  */
-const uploadMediaToGCS = async (input, directory = 'uploads') => {
+const uploadMediaToGCS = async (input, directory = 'logoUploads') => {
   const startTime = Date.now();
   let mimeType;
   let buffer;
@@ -168,7 +168,7 @@ const uploadMediaToGCS = async (input, directory = 'uploads') => {
 // ========================
 // 🔹 Backward Compatibility
 // ========================
-const uploadBase64MediaToGCS = async (base64String, directory = 'uploads') =>
+const uploadBase64MediaToGCS = async (base64String, directory = 'logoUploads') =>
   uploadMediaToGCS(base64String, directory);
 
 // const uploadMultipleBase64MediaToGCS = async (base64Array, directory = 'uploads') =>

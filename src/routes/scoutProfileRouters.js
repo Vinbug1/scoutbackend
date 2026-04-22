@@ -9,7 +9,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * @swagger
  * components:
  *   schemas:
- *     Profile:
+ *     ScouterProfile:
  *       type: object
  *       required:
  *         - userId
@@ -20,34 +20,17 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         userId:
  *           type: integer
  *           description: ID of the user this profile belongs to
- *         position:
- *           type: string
- *           description: Player position (e.g., Forward, Midfielder, Defender, Goalkeeper)
- *         height:
- *           type: number
- *           format: float
- *           description: Height in centimeters
- *         favouriteFoot:
- *           type: string
- *           enum: [Left, Right, Both]
- *           description: Preferred foot for playing
- *         strengths:
- *           type: string
- *           description: Player strengths and skills
- *         gender:
- *           type: string
- *           enum: [Male, Female, Other]
- *           description: Gender
+
  *         country:
  *           type: string
  *           description: Country of residence
  *         city:
  *           type: string
  *           description: City of residence
- *         dob:
+ *         address:
  *           type: string
  *           format: date
- *           description: Date of birth (YYYY-MM-DD)
+ *           description: Residential Address
  *         bio:
  *           type: string
  *           description: Biography or personal description
@@ -62,14 +45,9 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       example:
  *         id: 1
  *         userId: 5
- *         position: "Forward"
- *         height: 180.5
- *         favouriteFoot: "Right"
- *         strengths: "Speed, Dribbling, Finishing"
- *         gender: "Male"
  *         country: "Nigeria"
  *         city: "Lagos"
- *         dob: "1995-05-15"
+ *         address: "lagos"
  *         bio: "Passionate footballer with 5 years of experience"
  *     
  *     ProfileInput:
@@ -79,23 +57,12 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       properties:
  *         userId:
  *           type: integer
- *         position:
- *           type: string
- *         height:
- *           type: number
- *         favouriteFoot:
- *           type: string
- *         strengths:
- *           type: string
- *         gender:
- *           type: string
  *         country:
  *           type: string
  *         city:
  *           type: string
- *         dob:
+ *         address:
  *           type: string
- *           format: date
  *         bio:
  *           type: string
  *     
@@ -110,15 +77,15 @@ const upload = multer({ storage: multer.memoryStorage() });
 /**
  * @swagger
  * tags:
- *   name: Profiles
- *   description: Player profile management endpoints
+ *   name: ScouterProfiles
+ *   description: Scouter profile management endpoints
  */
 
 /**
  * @swagger
  * /api/profiles:
  *   post:
- *     summary: Create a new profile
+ *     summary: Create a new scouterProfile
  *     tags: [Profiles]
  *     requestBody:
  *       required: true
@@ -152,7 +119,7 @@ router.post("/", scoutProfileController.createScoutProfile);
  * @swagger
  * /api/profiles:
  *   get:
- *     summary: Get all profiles
+ *     summary: Get all scouterProfiles
  *     tags: [Profiles]
  *     responses:
  *       200:
@@ -227,7 +194,7 @@ router.get("/:id", scoutProfileController.getScoutProfileById);
  * @swagger
  * /api/profiles/{id}:
  *   put:
- *     summary: Update a profile
+ *     summary: Update a Scouterprofile
  *     tags: [Profiles]
  *     parameters:
  *       - in: path
@@ -243,23 +210,12 @@ router.get("/:id", scoutProfileController.getScoutProfileById);
  *           schema:
  *             type: object
  *             properties:
- *               position:
- *                 type: string
- *               height:
- *                 type: number
- *               favouriteFoot:
- *                 type: string
- *               strengths:
- *                 type: string
- *               gender:
- *                 type: string
  *               country:
  *                 type: string
  *               city:
  *                 type: string
- *               dob:
+ *               address:
  *                 type: string
- *                 format: date
  *               bio:
  *                 type: string
  *     responses:
