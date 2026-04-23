@@ -1,5 +1,5 @@
 import express from 'express';
-import scoutProfileController from '../controllers/scoutProfileController.js';
+import scouterProfileController from '../controllers/scouterProfileController.js';
 import multer from 'multer';
 
 const router = express.Router();
@@ -52,7 +52,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         bio: "Passionate footballer with 5 years of experience"
  *         avatarUrl: "https://storage.googleapis.com/bucket/avatars/file.jpg"
  *
- *     ProfileInput:
+ *     ScouterProfileInput:
  *       type: object
  *       required:
  *         - userId
@@ -67,34 +67,27 @@ const upload = multer({ storage: multer.memoryStorage() });
  *           type: string
  *         bio:
  *           type: string
- *
- *     Error:
- *       type: object
- *       properties:
- *         error:
- *           type: string
- *           description: Error message
  */
 
 /**
  * @swagger
  * tags:
- *   name: Profiles
+ *   name: ScoutProfiles
  *   description: Scouter profile management endpoints
  */
 
 /**
  * @swagger
- * /api/profiles:
+ * /api/scoutProfiles:
  *   post:
  *     summary: Create a new scouter profile
- *     tags: [Profiles]
+ *     tags: [ScoutProfiles]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/ProfileInput'
+ *             $ref: '#/components/schemas/ScouterProfileInput'
  *     responses:
  *       201:
  *         description: Profile created successfully
@@ -115,17 +108,17 @@ const upload = multer({ storage: multer.memoryStorage() });
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/", scoutProfileController.createScoutProfile);
+router.post("/", scouterProfileController.createScoutProfile);
 
 /**
  * @swagger
- * /api/profiles:
+ * /api/scoutProfiles:
  *   get:
  *     summary: Get all scouter profiles
- *     tags: [Profiles]
+ *     tags: [ScoutProfiles]
  *     responses:
  *       200:
- *         description: List of all profiles
+ *         description: List of all scouter profiles
  *         content:
  *           application/json:
  *             schema:
@@ -145,14 +138,14 @@ router.post("/", scoutProfileController.createScoutProfile);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/", scoutProfileController.getScoutProfiles);
+router.get("/", scouterProfileController.getScoutProfiles);
 
 /**
  * @swagger
- * /api/profiles/avatar:
+ * /api/scoutProfiles/avatar:
  *   post:
  *     summary: Upload or update profile avatar
- *     tags: [Profiles]
+ *     tags: [ScoutProfiles]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -201,15 +194,15 @@ router.get("/", scoutProfileController.getScoutProfiles);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-// ✅ Avatar route placed BEFORE /:id to prevent route conflict
-router.post("/avatar", upload.single("avatar"), scoutProfileController.uploadAvatar);
+// ✅ Avatar route BEFORE /:id to prevent route conflict
+router.post("/avatar", upload.single("avatar"), scouterProfileController.uploadAvatar);
 
 /**
  * @swagger
- * /api/profiles/{id}:
+ * /api/scoutProfiles/{id}:
  *   get:
- *     summary: Get a profile by ID
- *     tags: [Profiles]
+ *     summary: Get a scouter profile by ID
+ *     tags: [ScoutProfiles]
  *     parameters:
  *       - in: path
  *         name: id
@@ -235,11 +228,7 @@ router.post("/avatar", upload.single("avatar"), scoutProfileController.uploadAva
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Profile not found"
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
  *         content:
@@ -247,14 +236,14 @@ router.post("/avatar", upload.single("avatar"), scoutProfileController.uploadAva
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/:id", scoutProfileController.getScoutProfileById);
+router.get("/:id", scouterProfileController.getScoutProfileById);
 
 /**
  * @swagger
- * /api/profiles/{id}:
+ * /api/scoutProfiles/{id}:
  *   put:
  *     summary: Update a scouter profile
- *     tags: [Profiles]
+ *     tags: [ScoutProfiles]
  *     parameters:
  *       - in: path
  *         name: id
@@ -297,14 +286,14 @@ router.get("/:id", scoutProfileController.getScoutProfileById);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put("/:id", scoutProfileController.updateScoutProfile);
+router.put("/:id", scouterProfileController.updateScoutProfile);
 
 /**
  * @swagger
- * /api/profiles/{id}:
+ * /api/scoutProfiles/{id}:
  *   delete:
- *     summary: Delete a profile
- *     tags: [Profiles]
+ *     summary: Delete a scouter profile
+ *     tags: [ScoutProfiles]
  *     parameters:
  *       - in: path
  *         name: id
@@ -336,6 +325,6 @@ router.put("/:id", scoutProfileController.updateScoutProfile);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.delete("/:id", scoutProfileController.deleteScoutProfile);
+router.delete("/:id", scouterProfileController.deleteScoutProfile);
 
 export default router;
