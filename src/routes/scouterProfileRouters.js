@@ -1,9 +1,9 @@
 import express from 'express';
-const router = express.Router();
 import scoutProfileController from '../controllers/scoutProfileController.js';
-import multer from 'multer';                                        // 👈 add this
+import multer from 'multer';
 
-const upload = multer({ storage: multer.memoryStorage() }); 
+const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @swagger
@@ -20,7 +20,6 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         userId:
  *           type: integer
  *           description: ID of the user this profile belongs to
-
  *         country:
  *           type: string
  *           description: Country of residence
@@ -29,11 +28,13 @@ const upload = multer({ storage: multer.memoryStorage() });
  *           description: City of residence
  *         address:
  *           type: string
- *           format: date
  *           description: Residential Address
  *         bio:
  *           type: string
  *           description: Biography or personal description
+ *         avatarUrl:
+ *           type: string
+ *           description: URL of the profile avatar image
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -47,9 +48,10 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         userId: 5
  *         country: "Nigeria"
  *         city: "Lagos"
- *         address: "lagos"
+ *         address: "Lagos"
  *         bio: "Passionate footballer with 5 years of experience"
- *     
+ *         avatarUrl: "https://storage.googleapis.com/bucket/avatars/file.jpg"
+ *
  *     ProfileInput:
  *       type: object
  *       required:
@@ -65,7 +67,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *           type: string
  *         bio:
  *           type: string
- *     
+ *
  *     Error:
  *       type: object
  *       properties:
@@ -77,7 +79,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 /**
  * @swagger
  * tags:
- *   name: ScouterProfiles
+ *   name: Profiles
  *   description: Scouter profile management endpoints
  */
 
@@ -85,7 +87,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * @swagger
  * /api/profiles:
  *   post:
- *     summary: Create a new scouterProfile
+ *     summary: Create a new scouter profile
  *     tags: [Profiles]
  *     requestBody:
  *       required: true
@@ -105,7 +107,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *                   type: string
  *                   example: "Profile created successfully"
  *                 data:
- *                   $ref: '#/components/schemas/Profile'
+ *                   $ref: '#/components/schemas/ScouterProfile'
  *       500:
  *         description: Server error
  *         content:
@@ -119,7 +121,7 @@ router.post("/", scoutProfileController.createScoutProfile);
  * @swagger
  * /api/profiles:
  *   get:
- *     summary: Get all scouterProfiles
+ *     summary: Get all scouter profiles
  *     tags: [Profiles]
  *     responses:
  *       200:
@@ -130,7 +132,7 @@ router.post("/", scoutProfileController.createScoutProfile);
  *               type: array
  *               items:
  *                 allOf:
- *                   - $ref: '#/components/schemas/Profile'
+ *                   - $ref: '#/components/schemas/ScouterProfile'
  *                   - type: object
  *                     properties:
  *                       user:
@@ -144,134 +146,6 @@ router.post("/", scoutProfileController.createScoutProfile);
  *               $ref: '#/components/schemas/Error'
  */
 router.get("/", scoutProfileController.getScoutProfiles);
-
-/**
- * @swagger
- * /api/profiles/{id}:
- *   get:
- *     summary: Get a profile by ID
- *     tags: [Profiles]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Profile ID
- *     responses:
- *       200:
- *         description: Profile details
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/Profile'
- *                 - type: object
- *                   properties:
- *                     user:
- *                       type: object
- *                       description: Associated user information
- *       404:
- *         description: Profile not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Profile not found"
- *       500:
- *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
-router.get("/:id", scoutProfileController.getScoutProfileById);
-
-/**
- * @swagger
- * /api/profiles/{id}:
- *   put:
- *     summary: Update a Scouterprofile
- *     tags: [Profiles]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Profile ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               country:
- *                 type: string
- *               city:
- *                 type: string
- *               address:
- *                 type: string
- *               bio:
- *                 type: string
- *     responses:
- *       200:
- *         description: Profile updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Profile updated successfully"
- *                 data:
- *                   $ref: '#/components/schemas/Profile'
- *       500:
- *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
-router.put("/:id", scoutProfileController.updateScoutProfile);
-
-/**
- * @swagger
- * /api/profiles/{id}:
- *   delete:
- *     summary: Delete a profile
- *     tags: [Profiles]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Profile ID
- *     responses:
- *       200:
- *         description: Profile deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Profile deleted successfully"
- *       500:
- *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
-router.delete("/:id", scoutProfileController.deleteScoutProfile);
 
 /**
  * @swagger
@@ -327,7 +201,141 @@ router.delete("/:id", scoutProfileController.deleteScoutProfile);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+// ✅ Avatar route placed BEFORE /:id to prevent route conflict
 router.post("/avatar", upload.single("avatar"), scoutProfileController.uploadAvatar);
 
+/**
+ * @swagger
+ * /api/profiles/{id}:
+ *   get:
+ *     summary: Get a profile by ID
+ *     tags: [Profiles]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Profile ID
+ *     responses:
+ *       200:
+ *         description: Profile details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ScouterProfile'
+ *                 - type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       description: Associated user information
+ *       404:
+ *         description: Profile not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Profile not found"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get("/:id", scoutProfileController.getScoutProfileById);
+
+/**
+ * @swagger
+ * /api/profiles/{id}:
+ *   put:
+ *     summary: Update a scouter profile
+ *     tags: [Profiles]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Profile ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               country:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               bio:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Profile updated successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/ScouterProfile'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.put("/:id", scoutProfileController.updateScoutProfile);
+
+/**
+ * @swagger
+ * /api/profiles/{id}:
+ *   delete:
+ *     summary: Delete a profile
+ *     tags: [Profiles]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Profile ID
+ *     responses:
+ *       200:
+ *         description: Profile deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Profile deleted successfully"
+ *       404:
+ *         description: Profile not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.delete("/:id", scoutProfileController.deleteScoutProfile);
 
 export default router;
