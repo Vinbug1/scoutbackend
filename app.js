@@ -19,7 +19,7 @@ import paymentRouters from './src/routes/paymentRouters.js';
 import playerReportRouters from './src/routes/playerReportRouters.js';
 import postRouters from './src/routes/postRouters.js';
 import profileRouters from './src/routes/profileRouters.js';
-import scoutProfileRouters from './src/routes/scouterProfileRouters.js'; // ✅ ensure casing matches file on disk
+import scouterProfileRouters from './src/routes/scouterProfileRouters.js'; // ✅ ensure casing matches file on disk
 import rankingRouters from './src/routes/rankingRouters.js';
 import ratingRouters from './src/routes/ratingRouters.js';
 import scouterReportRouters from './src/routes/scouterReportRouters.js';
@@ -75,7 +75,7 @@ app.use(`${api}/payments`, paymentRouters);
 app.use(`${api}/playerReports`, playerReportRouters);
 app.use(`${api}/posts`, postRouters);
 app.use(`${api}/profiles`, profileRouters);
-app.use(`${api}/scoutProfiles`, scoutProfileRouters);
+app.use(`${api}/scouterProfiles`, scouterProfileRouters);
 app.use(`${api}/rankings`, rankingRouters);
 app.use(`${api}/ratings`, ratingRouters);
 app.use(`${api}/scouterReports`, scouterReportRouters);
