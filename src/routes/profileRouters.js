@@ -1,9 +1,10 @@
 import express from 'express';
-const router = express.Router();
+import multer from 'multer';
 import profileController from '../controllers/profileController.js';
-import multer from 'multer';                                        // 👈 add this
+import { verifyToken as authenticate } from '../middleware/auth.js';
 
-const upload = multer({ storage: multer.memoryStorage() });         // 👈 add this
+const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @swagger
@@ -11,108 +12,122 @@ const upload = multer({ storage: multer.memoryStorage() });         // 👈 add 
  *   schemas:
  *     Profile:
  *       type: object
- *       required:
- *         - userId
  *       properties:
- *         id:
- *           type: integer
- *           description: Auto-generated profile ID
- *         userId:
- *           type: integer
- *           description: ID of the user this profile belongs to
- *         position:
- *           type: string
- *           description: Player position (e.g., Forward, Midfielder, Defender, Goalkeeper)
- *         height:
- *           type: number
- *           format: float
- *           description: Height in centimeters
- *         favouriteFoot:
- *           type: string
- *           enum: [Left, Right, Both]
- *           description: Preferred foot for playing
- *         strengths:
- *           type: string
- *           description: Player strengths and skills
- *         gender:
- *           type: string
- *           enum: [Male, Female, Other]
- *           description: Gender
- *         country:
- *           type: string
- *           description: Country of residence
- *         city:
- *           type: string
- *           description: City of residence
- *         dob:
- *           type: string
- *           format: date
- *           description: Date of birth (YYYY-MM-DD)
- *         bio:
- *           type: string
- *           description: Biography or personal description
- *         createdAt:
- *           type: string
- *           format: date-time
- *           description: Profile creation timestamp
- *         updatedAt:
- *           type: string
- *           format: date-time
- *           description: Profile last update timestamp
+ *         id:             { type: integer }
+ *         userId:         { type: integer }
+ *         avatarUrl:      { type: string }
+ *         position:       { type: string }
+ *         height:         { type: number, format: float }
+ *         favouriteFoot:  { type: string, enum: [Left, Right, Both] }
+ *         strengths:      { type: string }
+ *         gender:         { type: string, enum: [Male, Female, Other] }
+ *         country:        { type: string }
+ *         city:           { type: string }
+ *         dob:            { type: string, format: date }
+ *         bio:            { type: string }
+ *         createdAt:      { type: string, format: date-time }
+ *         user:
+ *           type: object
+ *           properties:
+ *             id:       { type: integer }
+ *             fullname: { type: string }
+ *             email:    { type: string }
  *       example:
  *         id: 1
  *         userId: 5
- *         position: "Forward"
+ *         position: Forward
  *         height: 180.5
- *         favouriteFoot: "Right"
- *         strengths: "Speed, Dribbling, Finishing"
- *         gender: "Male"
- *         country: "Nigeria"
- *         city: "Lagos"
+ *         favouriteFoot: Right
+ *         strengths: Speed, Dribbling
+ *         gender: Male
+ *         country: Nigeria
+ *         city: Lagos
  *         dob: "1995-05-15"
- *         bio: "Passionate footballer with 5 years of experience"
- *     
+ *         bio: Passionate footballer with 5 years of experience
+ *
  *     ProfileInput:
  *       type: object
- *       required:
- *         - userId
+ *       required: [userId]
  *       properties:
- *         userId:
- *           type: integer
- *         position:
- *           type: string
- *         height:
- *           type: number
- *         favouriteFoot:
- *           type: string
- *         strengths:
- *           type: string
- *         gender:
- *           type: string
- *         country:
- *           type: string
- *         city:
- *           type: string
- *         dob:
- *           type: string
- *           format: date
- *         bio:
- *           type: string
- *     
+ *         userId:         { type: integer }
+ *         position:       { type: string }
+ *         height:         { type: number }
+ *         favouriteFoot:  { type: string, enum: [Left, Right, Both] }
+ *         strengths:      { type: string }
+ *         gender:         { type: string, enum: [Male, Female, Other] }
+ *         country:        { type: string }
+ *         city:           { type: string }
+ *         dob:            { type: string, format: date }
+ *         bio:            { type: string }
+ *
+ *     ProfileUpdate:
+ *       type: object
+ *       properties:
+ *         position:       { type: string }
+ *         height:         { type: number }
+ *         favouriteFoot:  { type: string, enum: [Left, Right, Both] }
+ *         strengths:      { type: string }
+ *         gender:         { type: string, enum: [Male, Female, Other] }
+ *         country:        { type: string }
+ *         city:           { type: string }
+ *         dob:            { type: string, format: date }
+ *         bio:            { type: string }
+ *
  *     Error:
  *       type: object
  *       properties:
- *         error:
- *           type: string
- *           description: Error message
+ *         error: { type: string }
+ *       example:
+ *         error: Profile not found
  */
 
 /**
  * @swagger
  * tags:
  *   name: Profiles
- *   description: Player profile management endpoints
+ *   description: Player profile management
  */
+
+/**
+ * @swagger
+ * /api/profiles/avatar:
+ *   post:
+ *     summary: Upload or update profile avatar
+ *     tags: [Profiles]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [avatar]
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Avatar uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:   { type: string }
+ *                 avatarUrl: { type: string }
+ *       400:
+ *         description: No image file provided
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Profile not found
+ *       500:
+ *         description: Server error
+ */
+// ⚠️ Must be declared BEFORE /:id to avoid Express matching "avatar" as an id param
+router.post('/avatar', authenticate, upload.single('avatar'), profileController.uploadAvatar);
 
 /**
  * @swagger
@@ -132,51 +147,67 @@ const upload = multer({ storage: multer.memoryStorage() });         // 👈 add 
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Profile created successfully"
- *                 data:
- *                   $ref: '#/components/schemas/Profile'
+ *               $ref: '#/components/schemas/Profile'
+ *       400:
+ *         description: Missing userId or profile already exists
+ *       404:
+ *         description: User not found
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
-router.post("/", profileController.createProfile);
+router.post('/', profileController.createProfile);
 
 /**
  * @swagger
  * /api/profiles:
  *   get:
- *     summary: Get all profiles
+ *     summary: Get all profiles (paginated + filterable)
  *     tags: [Profiles]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: position
+ *         schema: { type: string }
+ *       - in: query
+ *         name: country
+ *         schema: { type: string }
+ *       - in: query
+ *         name: gender
+ *         schema: { type: string }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Search by player fullname
  *     responses:
  *       200:
- *         description: List of all profiles
+ *         description: Paginated list of profiles
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 allOf:
- *                   - $ref: '#/components/schemas/Profile'
- *                   - type: object
- *                     properties:
- *                       user:
- *                         type: object
- *                         description: Associated user information
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Profile'
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     total:       { type: integer }
+ *                     page:        { type: integer }
+ *                     limit:       { type: integer }
+ *                     totalPages:  { type: integer }
+ *                     hasNextPage: { type: boolean }
+ *                     hasPrevPage: { type: boolean }
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
-router.get("/", profileController.getProfiles);
+router.get('/', profileController.getProfiles);
 
 /**
  * @swagger
@@ -188,40 +219,22 @@ router.get("/", profileController.getProfiles);
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: integer
- *         description: Profile ID
+ *         schema: { type: integer }
  *     responses:
  *       200:
  *         description: Profile details
  *         content:
  *           application/json:
  *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/Profile'
- *                 - type: object
- *                   properties:
- *                     user:
- *                       type: object
- *                       description: Associated user information
+ *               $ref: '#/components/schemas/Profile'
+ *       400:
+ *         description: Invalid profile ID
  *       404:
  *         description: Profile not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Profile not found"
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
-router.get("/:id", profileController.getProfileById);
+router.get('/:id', profileController.getProfileById);
 
 /**
  * @swagger
@@ -233,56 +246,28 @@ router.get("/:id", profileController.getProfileById);
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: integer
- *         description: Profile ID
+ *         schema: { type: integer }
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               position:
- *                 type: string
- *               height:
- *                 type: number
- *               favouriteFoot:
- *                 type: string
- *               strengths:
- *                 type: string
- *               gender:
- *                 type: string
- *               country:
- *                 type: string
- *               city:
- *                 type: string
- *               dob:
- *                 type: string
- *                 format: date
- *               bio:
- *                 type: string
+ *             $ref: '#/components/schemas/ProfileUpdate'
  *     responses:
  *       200:
  *         description: Profile updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Profile updated successfully"
- *                 data:
- *                   $ref: '#/components/schemas/Profile'
+ *               $ref: '#/components/schemas/Profile'
+ *       400:
+ *         description: Invalid profile ID
+ *       404:
+ *         description: Profile not found
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
-router.put("/:id", profileController.updateProfile);
+router.put('/:id', profileController.updateProfile);
 
 /**
  * @swagger
@@ -294,84 +279,415 @@ router.put("/:id", profileController.updateProfile);
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: integer
- *         description: Profile ID
+ *         schema: { type: integer }
  *     responses:
  *       200:
  *         description: Profile deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Profile deleted successfully"
- *       500:
- *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
-router.delete("/:id", profileController.deleteProfile);
-
-/**
- * @swagger
- * /api/profiles/avatar:
- *   post:
- *     summary: Upload or update profile avatar
- *     tags: [Profiles]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - avatar
- *             properties:
- *               avatar:
- *                 type: string
- *                 format: binary
- *                 description: Image file to upload
- *     responses:
- *       200:
- *         description: Avatar uploaded successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Avatar uploaded successfully"
- *                 avatarUrl:
- *                   type: string
- *                   example: "https://storage.googleapis.com/bucket/avatars/file.jpg"
  *       400:
- *         description: No image file provided
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Invalid profile ID
  *       404:
  *         description: Profile not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
-router.post("/avatar", upload.single("avatar"), profileController.uploadAvatar);
-
+router.delete('/:id', profileController.deleteProfile);
 
 export default router;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import express from 'express';
+// const router = express.Router();
+// import profileController from '../controllers/profileController.js';
+// import multer from 'multer';                                        // 👈 add this
+
+// const upload = multer({ storage: multer.memoryStorage() });         // 👈 add this
+
+// /**
+//  * @swagger
+//  * components:
+//  *   schemas:
+//  *     Profile:
+//  *       type: object
+//  *       required:
+//  *         - userId
+//  *       properties:
+//  *         id:
+//  *           type: integer
+//  *           description: Auto-generated profile ID
+//  *         userId:
+//  *           type: integer
+//  *           description: ID of the user this profile belongs to
+//  *         position:
+//  *           type: string
+//  *           description: Player position (e.g., Forward, Midfielder, Defender, Goalkeeper)
+//  *         height:
+//  *           type: number
+//  *           format: float
+//  *           description: Height in centimeters
+//  *         favouriteFoot:
+//  *           type: string
+//  *           enum: [Left, Right, Both]
+//  *           description: Preferred foot for playing
+//  *         strengths:
+//  *           type: string
+//  *           description: Player strengths and skills
+//  *         gender:
+//  *           type: string
+//  *           enum: [Male, Female, Other]
+//  *           description: Gender
+//  *         country:
+//  *           type: string
+//  *           description: Country of residence
+//  *         city:
+//  *           type: string
+//  *           description: City of residence
+//  *         dob:
+//  *           type: string
+//  *           format: date
+//  *           description: Date of birth (YYYY-MM-DD)
+//  *         bio:
+//  *           type: string
+//  *           description: Biography or personal description
+//  *         createdAt:
+//  *           type: string
+//  *           format: date-time
+//  *           description: Profile creation timestamp
+//  *         updatedAt:
+//  *           type: string
+//  *           format: date-time
+//  *           description: Profile last update timestamp
+//  *       example:
+//  *         id: 1
+//  *         userId: 5
+//  *         position: "Forward"
+//  *         height: 180.5
+//  *         favouriteFoot: "Right"
+//  *         strengths: "Speed, Dribbling, Finishing"
+//  *         gender: "Male"
+//  *         country: "Nigeria"
+//  *         city: "Lagos"
+//  *         dob: "1995-05-15"
+//  *         bio: "Passionate footballer with 5 years of experience"
+//  *     
+//  *     ProfileInput:
+//  *       type: object
+//  *       required:
+//  *         - userId
+//  *       properties:
+//  *         userId:
+//  *           type: integer
+//  *         position:
+//  *           type: string
+//  *         height:
+//  *           type: number
+//  *         favouriteFoot:
+//  *           type: string
+//  *         strengths:
+//  *           type: string
+//  *         gender:
+//  *           type: string
+//  *         country:
+//  *           type: string
+//  *         city:
+//  *           type: string
+//  *         dob:
+//  *           type: string
+//  *           format: date
+//  *         bio:
+//  *           type: string
+//  *     
+//  *     Error:
+//  *       type: object
+//  *       properties:
+//  *         error:
+//  *           type: string
+//  *           description: Error message
+//  */
+
+// /**
+//  * @swagger
+//  * tags:
+//  *   name: Profiles
+//  *   description: Player profile management endpoints
+//  */
+
+// /**
+//  * @swagger
+//  * /api/profiles:
+//  *   post:
+//  *     summary: Create a new profile
+//  *     tags: [Profiles]
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             $ref: '#/components/schemas/ProfileInput'
+//  *     responses:
+//  *       201:
+//  *         description: Profile created successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 message:
+//  *                   type: string
+//  *                   example: "Profile created successfully"
+//  *                 data:
+//  *                   $ref: '#/components/schemas/Profile'
+//  *       500:
+//  *         description: Server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.post("/", profileController.createProfile);
+
+// /**
+//  * @swagger
+//  * /api/profiles:
+//  *   get:
+//  *     summary: Get all profiles
+//  *     tags: [Profiles]
+//  *     responses:
+//  *       200:
+//  *         description: List of all profiles
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: array
+//  *               items:
+//  *                 allOf:
+//  *                   - $ref: '#/components/schemas/Profile'
+//  *                   - type: object
+//  *                     properties:
+//  *                       user:
+//  *                         type: object
+//  *                         description: Associated user information
+//  *       500:
+//  *         description: Server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.get("/", profileController.getProfiles);
+
+// /**
+//  * @swagger
+//  * /api/profiles/{id}:
+//  *   get:
+//  *     summary: Get a profile by ID
+//  *     tags: [Profiles]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: integer
+//  *         description: Profile ID
+//  *     responses:
+//  *       200:
+//  *         description: Profile details
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               allOf:
+//  *                 - $ref: '#/components/schemas/Profile'
+//  *                 - type: object
+//  *                   properties:
+//  *                     user:
+//  *                       type: object
+//  *                       description: Associated user information
+//  *       404:
+//  *         description: Profile not found
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 error:
+//  *                   type: string
+//  *                   example: "Profile not found"
+//  *       500:
+//  *         description: Server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.get("/:id", profileController.getProfileById);
+
+// /**
+//  * @swagger
+//  * /api/profiles/{id}:
+//  *   put:
+//  *     summary: Update a profile
+//  *     tags: [Profiles]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: integer
+//  *         description: Profile ID
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             type: object
+//  *             properties:
+//  *               position:
+//  *                 type: string
+//  *               height:
+//  *                 type: number
+//  *               favouriteFoot:
+//  *                 type: string
+//  *               strengths:
+//  *                 type: string
+//  *               gender:
+//  *                 type: string
+//  *               country:
+//  *                 type: string
+//  *               city:
+//  *                 type: string
+//  *               dob:
+//  *                 type: string
+//  *                 format: date
+//  *               bio:
+//  *                 type: string
+//  *     responses:
+//  *       200:
+//  *         description: Profile updated successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 message:
+//  *                   type: string
+//  *                   example: "Profile updated successfully"
+//  *                 data:
+//  *                   $ref: '#/components/schemas/Profile'
+//  *       500:
+//  *         description: Server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.put("/:id", profileController.updateProfile);
+
+// /**
+//  * @swagger
+//  * /api/profiles/{id}:
+//  *   delete:
+//  *     summary: Delete a profile
+//  *     tags: [Profiles]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: integer
+//  *         description: Profile ID
+//  *     responses:
+//  *       200:
+//  *         description: Profile deleted successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 message:
+//  *                   type: string
+//  *                   example: "Profile deleted successfully"
+//  *       500:
+//  *         description: Server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.delete("/:id", profileController.deleteProfile);
+
+// /**
+//  * @swagger
+//  * /api/profiles/avatar:
+//  *   post:
+//  *     summary: Upload or update profile avatar
+//  *     tags: [Profiles]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         multipart/form-data:
+//  *           schema:
+//  *             type: object
+//  *             required:
+//  *               - avatar
+//  *             properties:
+//  *               avatar:
+//  *                 type: string
+//  *                 format: binary
+//  *                 description: Image file to upload
+//  *     responses:
+//  *       200:
+//  *         description: Avatar uploaded successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 message:
+//  *                   type: string
+//  *                   example: "Avatar uploaded successfully"
+//  *                 avatarUrl:
+//  *                   type: string
+//  *                   example: "https://storage.googleapis.com/bucket/avatars/file.jpg"
+//  *       400:
+//  *         description: No image file provided
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  *       404:
+//  *         description: Profile not found
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  *       500:
+//  *         description: Server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.post("/avatar", upload.single("avatar"), profileController.uploadAvatar);
+
+
+// export default router;

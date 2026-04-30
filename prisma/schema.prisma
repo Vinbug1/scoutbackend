@@ -26,6 +26,75 @@ enum ParticipantStatus {
   PAUSED
 }
 
+enum Recommendation {
+  RECOMMEND_FOR_TRIAL
+  FILE_FOR_FUTURE_REFERENCE
+  NOT_SUITABLE
+}
+
+model ScouterReport {
+  id        Int      @id @default(autoincrement())
+  scouterId Int
+  playerId  Int
+  createdAt DateTime @default(now())
+
+  // 1. Match Info (snapshot at time of scouting)
+  matchScouted String?
+  ageGroup     String?
+  timesSeen    Int?
+  currentClub  String?
+
+  // 2. Scout's Overall Assessment
+  overallAssessment String?
+
+  // 3A. Technical Attributes (1–10)
+  firstTouch   Int?
+  ballControl  Int?
+  dribbling    Int?
+  passingShort Int?
+  passingLong  Int?
+  throughBalls Int?
+  smartPass    Int?
+  shooting     Int?
+  heading      Int?
+  tackling     Int?
+  weakerFoot   Int?
+
+  // 3B. Tactical Attributes (1–10)
+  positionalAwareness Int?
+  decisionMaking      Int?
+  movementOffBall     Int?
+  gameIntelligence    Int?
+  transitions         Int?
+
+  // 3C. Physical Attributes (1–10)
+  pace            Int?
+  agilityBalance  Int?
+  strength        Int?
+  staminaWorkRate Int?
+  jumpingRate     Int?
+
+  // 3D. Psychological Attributes (1–10)
+  composure               Int?
+  braveryCommitment       Int?
+  determination           Int?
+  leadershipCommunication Int?
+  coachability            Int?
+
+  // 4 & 5. Summaries
+  keyStrengths        String[]
+  areasForDevelopment String[]
+
+  // 6. Final Recommendation
+  recommendation Recommendation?
+
+  scouter User @relation("ReportsByScouter", fields: [scouterId], references: [id])
+  player  User @relation("ReportsAboutPlayer", fields: [playerId], references: [id])
+
+  @@index([playerId])
+  @@index([scouterId])
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
@@ -48,9 +117,13 @@ model User {
   followers         Follower[]             @relation("Followed")
   following         Follower[]             @relation("Following")
   posts             Post[]
-  reports           ScouterReport[]        @relation("ReportsByScouter")
-  reportsAboutMe    ScouterReport[]        @relation("ReportsAboutScouter") // ✅ keep only this one
-  reportsAbout      PlayerReport[]         @relation("ReportsAboutPlayer")
+
+  // Scouter only: reports written by this user
+  reportsFiled      ScouterReport[]        @relation("ReportsByScouter")
+
+  // Player only: reports written about this user
+  reportsAboutMe    ScouterReport[]        @relation("ReportsAboutPlayer")
+
   payments          Payment[]
   rankings          Ranking[]
   chatMessages      ChatMessage[]
@@ -275,29 +348,6 @@ model Follower {
   @@index([followerId])
 }
 
-model ScouterReport {
-  id        Int      @id @default(autoincrement())
-  scouterId Int
-  playerId  Int
-  title     String?
-  report    String
-  createdAt DateTime @default(now())
-
-  scouter User @relation("ReportsByScouter", fields: [scouterId], references: [id])
-  player  User @relation("ReportsAboutScouter", fields: [playerId], references: [id])
-
-  @@index([playerId])
-  @@index([scouterId])
-}
-
-model PlayerReport {
-  id        Int      @id @default(autoincrement())
-  playerId  Int
-  data      Json
-  createdAt DateTime @default(now())
-
-  player User @relation("ReportsAboutPlayer", fields: [playerId], references: [id])
-}
 
 model Payment {
   id          Int           @id @default(autoincrement())

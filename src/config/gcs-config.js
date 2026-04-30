@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 
 // Load Google Cloud credentials
 const storage = new Storage({
-  keyFilename: path.join(__dirname, '../../slashpoint-3971da8d8e1d.json'),
+  keyFilename: path.join(__dirname, '../../scoutimg-aa6e95184dbd.json'),
   projectId: process.env.GCLOUD_PROJECT_ID,
 });
 
