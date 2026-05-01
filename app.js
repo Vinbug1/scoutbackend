@@ -16,7 +16,7 @@ import chatRoomRouters from './src/routes/chatRoomRouters.js';
 import commentRouters from './src/routes/commentRouters.js';
 import followerRouters from './src/routes/followerRouters.js';
 import paymentRouters from './src/routes/paymentRouters.js';
-import playerReportRouters from './src/routes/playerReportRouters.js';
+// import playerReportRouters from './src/routes/playerReportRouters.js';
 import postRouters from './src/routes/postRouters.js';
 import profileRouters from './src/routes/profileRouters.js';
 import scouterProfileRouters from './src/routes/scouterProfileRouters.js'; // ✅ ensure casing matches file on disk
@@ -72,7 +72,7 @@ app.use(`${api}/chatRooms`, chatRoomRouters);
 app.use(`${api}/comments`, commentRouters);
 app.use(`${api}/followers`, followerRouters);
 app.use(`${api}/payments`, paymentRouters);
-app.use(`${api}/playerReports`, playerReportRouters);
+// app.use(`${api}/playerReports`, playerReportRouters);
 app.use(`${api}/posts`, postRouters);
 app.use(`${api}/profiles`, profileRouters);
 app.use(`${api}/scouterProfiles`, scouterProfileRouters);
