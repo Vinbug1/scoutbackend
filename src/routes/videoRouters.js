@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { upload }  from '../config/multer.js';
-import {handleVideoUpload,handleAvatarUpload,handleGetUserVideos,handleGetMyProfile,handleGetVideo,} from './videoController.js';
-
+import { upload } from '../config/multer.js';
+import { handleVideoUpload, handleAvatarUpload, handleGetUserVideos, handleGetMyProfile, handleGetVideo } from '../controllers/videoController.js';
+import { verifyToken as protect, optionalAuth } from '../middleware/auth.js';
 // import { protect, optionalAuth } from './middlewares/auth.js';
 
 const router = Router();
