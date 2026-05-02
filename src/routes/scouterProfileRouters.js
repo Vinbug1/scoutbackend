@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import profileController from '../controllers/profileController.js';
+import scouterProfileController from '../controllers/scouterProfileController.js';
 import { verifyToken as authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -10,22 +10,18 @@ const upload = multer({ storage: multer.memoryStorage() });
  * @swagger
  * components:
  *   schemas:
- *     Profile:
+ *     ScouterProfile:
  *       type: object
  *       properties:
- *         id:             { type: integer }
- *         userId:         { type: integer }
- *         avatarUrl:      { type: string }
- *         position:       { type: string }
- *         height:         { type: number, format: float }
- *         favouriteFoot:  { type: string, enum: [Left, Right, Both] }
- *         strengths:      { type: string }
- *         gender:         { type: string, enum: [Male, Female, Other] }
- *         country:        { type: string }
- *         city:           { type: string }
- *         dob:            { type: string, format: date }
- *         bio:            { type: string }
- *         createdAt:      { type: string, format: date-time }
+ *         id:        { type: integer }
+ *         userId:    { type: integer }
+ *         avatarUrl: { type: string }
+ *         club:      { type: string }
+ *         country:   { type: string }
+ *         city:      { type: string }
+ *         address:   { type: string }
+ *         bio:       { type: string }
+ *         createdAt: { type: string, format: date-time }
  *         user:
  *           type: object
  *           properties:
@@ -35,65 +31,54 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       example:
  *         id: 1
  *         userId: 5
- *         position: Forward
- *         height: 180.5
- *         favouriteFoot: Right
- *         strengths: Speed, Dribbling
- *         gender: Male
+ *         club: Arsenal FC
  *         country: Nigeria
  *         city: Lagos
- *         dob: "1995-05-15"
- *         bio: Passionate footballer with 5 years of experience
+ *         address: 12 Victoria Island
+ *         bio: Senior scout with 10 years experience
+ *         avatarUrl: https://storage.googleapis.com/bucket/avatars/file.jpg
  *
- *     ProfileInput:
+ *     ScouterProfileInput:
  *       type: object
  *       required: [userId]
  *       properties:
- *         userId:         { type: integer }
- *         position:       { type: string }
- *         height:         { type: number }
- *         favouriteFoot:  { type: string, enum: [Left, Right, Both] }
- *         strengths:      { type: string }
- *         gender:         { type: string, enum: [Male, Female, Other] }
- *         country:        { type: string }
- *         city:           { type: string }
- *         dob:            { type: string, format: date }
- *         bio:            { type: string }
+ *         userId:  { type: integer }
+ *         club:    { type: string }
+ *         country: { type: string }
+ *         city:    { type: string }
+ *         address: { type: string }
+ *         bio:     { type: string }
  *
- *     ProfileUpdate:
+ *     ScouterProfileUpdate:
  *       type: object
  *       properties:
- *         position:       { type: string }
- *         height:         { type: number }
- *         favouriteFoot:  { type: string, enum: [Left, Right, Both] }
- *         strengths:      { type: string }
- *         gender:         { type: string, enum: [Male, Female, Other] }
- *         country:        { type: string }
- *         city:           { type: string }
- *         dob:            { type: string, format: date }
- *         bio:            { type: string }
+ *         club:    { type: string }
+ *         country: { type: string }
+ *         city:    { type: string }
+ *         address: { type: string }
+ *         bio:     { type: string }
  *
  *     Error:
  *       type: object
  *       properties:
  *         error: { type: string }
  *       example:
- *         error: Profile not found
+ *         error: Scout profile not found
  */
 
 /**
  * @swagger
  * tags:
- *   name: Profiles
- *   description: Player profile management
+ *   name: ScoutProfiles
+ *   description: Scout profile management
  */
 
 /**
  * @swagger
- * /api/profiles/avatar:
+ * /api/scoutProfiles/avatar:
  *   post:
- *     summary: Upload or update profile avatar
- *     tags: [Profiles]
+ *     summary: Upload or update scout profile avatar
+ *     tags: [ScoutProfiles]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -122,47 +107,49 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       401:
  *         description: Not authenticated
  *       404:
- *         description: Profile not found
+ *         description: Scout profile not found
  *       500:
  *         description: Server error
  */
-// ⚠️ Must be declared BEFORE /:id to avoid Express matching "avatar" as an id param
-router.post('/avatar', authenticate, upload.single('avatar'), profileController.uploadAvatar);
+// ⚠️ Must be declared BEFORE /:id to prevent Express matching "avatar" as an id param
+router.post('/avatar', authenticate, upload.single('avatar'), scouterProfileController.uploadAvatar);
 
 /**
  * @swagger
- * /api/profiles:
+ * /api/scoutProfiles:
  *   post:
- *     summary: Create a new profile
- *     tags: [Profiles]
+ *     summary: Create a new scout profile
+ *     tags: [ScoutProfiles]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/ProfileInput'
+ *             $ref: '#/components/schemas/ScouterProfileInput'
  *     responses:
  *       201:
- *         description: Profile created successfully
+ *         description: Scout profile created successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Profile'
+ *               $ref: '#/components/schemas/ScouterProfile'
  *       400:
  *         description: Missing userId or profile already exists
+ *       403:
+ *         description: User is not a scout
  *       404:
  *         description: User not found
  *       500:
  *         description: Server error
  */
-router.post('/', profileController.createProfile);
+router.post('/', scouterProfileController.createScoutProfile);
 
 /**
  * @swagger
- * /api/profiles:
+ * /api/scoutProfiles:
  *   get:
- *     summary: Get all profiles (paginated + filterable)
- *     tags: [Profiles]
+ *     summary: Get all scout profiles (paginated + filterable)
+ *     tags: [ScoutProfiles]
  *     parameters:
  *       - in: query
  *         name: page
@@ -171,21 +158,15 @@ router.post('/', profileController.createProfile);
  *         name: limit
  *         schema: { type: integer, default: 10 }
  *       - in: query
- *         name: position
- *         schema: { type: string }
- *       - in: query
  *         name: country
- *         schema: { type: string }
- *       - in: query
- *         name: gender
  *         schema: { type: string }
  *       - in: query
  *         name: search
  *         schema: { type: string }
- *         description: Search by player fullname
+ *         description: Search by scout fullname
  *     responses:
  *       200:
- *         description: Paginated list of profiles
+ *         description: Paginated list of scout profiles
  *         content:
  *           application/json:
  *             schema:
@@ -194,7 +175,7 @@ router.post('/', profileController.createProfile);
  *                 data:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/Profile'
+ *                     $ref: '#/components/schemas/ScouterProfile'
  *                 meta:
  *                   type: object
  *                   properties:
@@ -207,14 +188,14 @@ router.post('/', profileController.createProfile);
  *       500:
  *         description: Server error
  */
-router.get('/', profileController.getProfiles);
+router.get('/', scouterProfileController.getScoutProfiles);
 
 /**
  * @swagger
- * /api/profiles/{id}:
+ * /api/scoutProfiles/{id}:
  *   get:
- *     summary: Get a profile by ID
- *     tags: [Profiles]
+ *     summary: Get a scout profile by ID
+ *     tags: [ScoutProfiles]
  *     parameters:
  *       - in: path
  *         name: id
@@ -222,26 +203,26 @@ router.get('/', profileController.getProfiles);
  *         schema: { type: integer }
  *     responses:
  *       200:
- *         description: Profile details
+ *         description: Scout profile details
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Profile'
+ *               $ref: '#/components/schemas/ScouterProfile'
  *       400:
  *         description: Invalid profile ID
  *       404:
- *         description: Profile not found
+ *         description: Scout profile not found
  *       500:
  *         description: Server error
  */
-router.get('/:id', profileController.getProfileById);
+router.get('/:id', scouterProfileController.getScoutProfileById);
 
 /**
  * @swagger
- * /api/profiles/{id}:
+ * /api/scoutProfiles/{id}:
  *   put:
- *     summary: Update a profile
- *     tags: [Profiles]
+ *     summary: Update a scout profile
+ *     tags: [ScoutProfiles]
  *     parameters:
  *       - in: path
  *         name: id
@@ -252,29 +233,29 @@ router.get('/:id', profileController.getProfileById);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/ProfileUpdate'
+ *             $ref: '#/components/schemas/ScouterProfileUpdate'
  *     responses:
  *       200:
- *         description: Profile updated successfully
+ *         description: Scout profile updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Profile'
+ *               $ref: '#/components/schemas/ScouterProfile'
  *       400:
  *         description: Invalid profile ID
  *       404:
- *         description: Profile not found
+ *         description: Scout profile not found
  *       500:
  *         description: Server error
  */
-router.put('/:id', profileController.updateProfile);
+router.put('/:id', scouterProfileController.updateScoutProfile);
 
 /**
  * @swagger
- * /api/profiles/{id}:
+ * /api/scoutProfiles/{id}:
  *   delete:
- *     summary: Delete a profile
- *     tags: [Profiles]
+ *     summary: Delete a scout profile
+ *     tags: [ScoutProfiles]
  *     parameters:
  *       - in: path
  *         name: id
@@ -282,15 +263,15 @@ router.put('/:id', profileController.updateProfile);
  *         schema: { type: integer }
  *     responses:
  *       200:
- *         description: Profile deleted successfully
+ *         description: Scout profile deleted successfully
  *       400:
  *         description: Invalid profile ID
  *       404:
- *         description: Profile not found
+ *         description: Scout profile not found
  *       500:
  *         description: Server error
  */
-router.delete('/:id', profileController.deleteProfile);
+router.delete('/:id', scouterProfileController.deleteScoutProfile);
 
 export default router;
 
@@ -315,17 +296,17 @@ export default router;
 
 
 // import express from 'express';
-// const router = express.Router();
-// import profileController from '../controllers/profileController.js';
-// import multer from 'multer';                                        // 👈 add this
+// import scouterProfileController from '../controllers/scouterProfileController.js';
+// import multer from 'multer';
 
-// const upload = multer({ storage: multer.memoryStorage() });         // 👈 add this
+// const router = express.Router();
+// const upload = multer({ storage: multer.memoryStorage() });
 
 // /**
 //  * @swagger
 //  * components:
 //  *   schemas:
-//  *     Profile:
+//  *     ScouterProfile:
 //  *       type: object
 //  *       required:
 //  *         - userId
@@ -336,37 +317,21 @@ export default router;
 //  *         userId:
 //  *           type: integer
 //  *           description: ID of the user this profile belongs to
-//  *         position:
-//  *           type: string
-//  *           description: Player position (e.g., Forward, Midfielder, Defender, Goalkeeper)
-//  *         height:
-//  *           type: number
-//  *           format: float
-//  *           description: Height in centimeters
-//  *         favouriteFoot:
-//  *           type: string
-//  *           enum: [Left, Right, Both]
-//  *           description: Preferred foot for playing
-//  *         strengths:
-//  *           type: string
-//  *           description: Player strengths and skills
-//  *         gender:
-//  *           type: string
-//  *           enum: [Male, Female, Other]
-//  *           description: Gender
 //  *         country:
 //  *           type: string
 //  *           description: Country of residence
 //  *         city:
 //  *           type: string
 //  *           description: City of residence
-//  *         dob:
+//  *         address:
 //  *           type: string
-//  *           format: date
-//  *           description: Date of birth (YYYY-MM-DD)
+//  *           description: Residential Address
 //  *         bio:
 //  *           type: string
 //  *           description: Biography or personal description
+//  *         avatarUrl:
+//  *           type: string
+//  *           description: URL of the profile avatar image
 //  *         createdAt:
 //  *           type: string
 //  *           format: date-time
@@ -378,70 +343,48 @@ export default router;
 //  *       example:
 //  *         id: 1
 //  *         userId: 5
-//  *         position: "Forward"
-//  *         height: 180.5
-//  *         favouriteFoot: "Right"
-//  *         strengths: "Speed, Dribbling, Finishing"
-//  *         gender: "Male"
 //  *         country: "Nigeria"
 //  *         city: "Lagos"
-//  *         dob: "1995-05-15"
+//  *         address: "Lagos"
 //  *         bio: "Passionate footballer with 5 years of experience"
-//  *     
-//  *     ProfileInput:
+//  *         avatarUrl: "https://storage.googleapis.com/bucket/avatars/file.jpg"
+//  *
+//  *     ScouterProfileInput:
 //  *       type: object
 //  *       required:
 //  *         - userId
 //  *       properties:
 //  *         userId:
 //  *           type: integer
-//  *         position:
-//  *           type: string
-//  *         height:
-//  *           type: number
-//  *         favouriteFoot:
-//  *           type: string
-//  *         strengths:
-//  *           type: string
-//  *         gender:
-//  *           type: string
 //  *         country:
 //  *           type: string
 //  *         city:
 //  *           type: string
-//  *         dob:
+//  *         address:
 //  *           type: string
-//  *           format: date
 //  *         bio:
 //  *           type: string
-//  *     
-//  *     Error:
-//  *       type: object
-//  *       properties:
-//  *         error:
-//  *           type: string
-//  *           description: Error message
 //  */
 
 // /**
 //  * @swagger
 //  * tags:
-//  *   name: Profiles
-//  *   description: Player profile management endpoints
+//  *   name: ScoutProfiles
+//  *   description: Scouter profile management endpoints
 //  */
 
 // /**
 //  * @swagger
-//  * /api/profiles:
+//  * /api/scoutProfiles:
 //  *   post:
-//  *     summary: Create a new profile
-//  *     tags: [Profiles]
+//  *     summary: Create a new scouter profile
+//  *     tags: [ScoutProfiles]
 //  *     requestBody:
 //  *       required: true
 //  *       content:
 //  *         application/json:
 //  *           schema:
-//  *             $ref: '#/components/schemas/ProfileInput'
+//  *             $ref: '#/components/schemas/ScouterProfileInput'
 //  *     responses:
 //  *       201:
 //  *         description: Profile created successfully
@@ -454,7 +397,7 @@ export default router;
 //  *                   type: string
 //  *                   example: "Profile created successfully"
 //  *                 data:
-//  *                   $ref: '#/components/schemas/Profile'
+//  *                   $ref: '#/components/schemas/ScouterProfile'
 //  *       500:
 //  *         description: Server error
 //  *         content:
@@ -462,24 +405,24 @@ export default router;
 //  *             schema:
 //  *               $ref: '#/components/schemas/Error'
 //  */
-// router.post("/", profileController.createProfile);
+// router.post("/", scouterProfileController.createScoutProfile);
 
 // /**
 //  * @swagger
-//  * /api/profiles:
+//  * /api/scoutProfiles:
 //  *   get:
-//  *     summary: Get all profiles
-//  *     tags: [Profiles]
+//  *     summary: Get all scouter profiles
+//  *     tags: [ScoutProfiles]
 //  *     responses:
 //  *       200:
-//  *         description: List of all profiles
+//  *         description: List of all scouter profiles
 //  *         content:
 //  *           application/json:
 //  *             schema:
 //  *               type: array
 //  *               items:
 //  *                 allOf:
-//  *                   - $ref: '#/components/schemas/Profile'
+//  *                   - $ref: '#/components/schemas/ScouterProfile'
 //  *                   - type: object
 //  *                     properties:
 //  *                       user:
@@ -492,153 +435,14 @@ export default router;
 //  *             schema:
 //  *               $ref: '#/components/schemas/Error'
 //  */
-// router.get("/", profileController.getProfiles);
+// router.get("/", scouterProfileController.getScoutProfiles);
 
 // /**
 //  * @swagger
-//  * /api/profiles/{id}:
-//  *   get:
-//  *     summary: Get a profile by ID
-//  *     tags: [Profiles]
-//  *     parameters:
-//  *       - in: path
-//  *         name: id
-//  *         required: true
-//  *         schema:
-//  *           type: integer
-//  *         description: Profile ID
-//  *     responses:
-//  *       200:
-//  *         description: Profile details
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               allOf:
-//  *                 - $ref: '#/components/schemas/Profile'
-//  *                 - type: object
-//  *                   properties:
-//  *                     user:
-//  *                       type: object
-//  *                       description: Associated user information
-//  *       404:
-//  *         description: Profile not found
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               type: object
-//  *               properties:
-//  *                 error:
-//  *                   type: string
-//  *                   example: "Profile not found"
-//  *       500:
-//  *         description: Server error
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/Error'
-//  */
-// router.get("/:id", profileController.getProfileById);
-
-// /**
-//  * @swagger
-//  * /api/profiles/{id}:
-//  *   put:
-//  *     summary: Update a profile
-//  *     tags: [Profiles]
-//  *     parameters:
-//  *       - in: path
-//  *         name: id
-//  *         required: true
-//  *         schema:
-//  *           type: integer
-//  *         description: Profile ID
-//  *     requestBody:
-//  *       required: true
-//  *       content:
-//  *         application/json:
-//  *           schema:
-//  *             type: object
-//  *             properties:
-//  *               position:
-//  *                 type: string
-//  *               height:
-//  *                 type: number
-//  *               favouriteFoot:
-//  *                 type: string
-//  *               strengths:
-//  *                 type: string
-//  *               gender:
-//  *                 type: string
-//  *               country:
-//  *                 type: string
-//  *               city:
-//  *                 type: string
-//  *               dob:
-//  *                 type: string
-//  *                 format: date
-//  *               bio:
-//  *                 type: string
-//  *     responses:
-//  *       200:
-//  *         description: Profile updated successfully
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               type: object
-//  *               properties:
-//  *                 message:
-//  *                   type: string
-//  *                   example: "Profile updated successfully"
-//  *                 data:
-//  *                   $ref: '#/components/schemas/Profile'
-//  *       500:
-//  *         description: Server error
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/Error'
-//  */
-// router.put("/:id", profileController.updateProfile);
-
-// /**
-//  * @swagger
-//  * /api/profiles/{id}:
-//  *   delete:
-//  *     summary: Delete a profile
-//  *     tags: [Profiles]
-//  *     parameters:
-//  *       - in: path
-//  *         name: id
-//  *         required: true
-//  *         schema:
-//  *           type: integer
-//  *         description: Profile ID
-//  *     responses:
-//  *       200:
-//  *         description: Profile deleted successfully
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               type: object
-//  *               properties:
-//  *                 message:
-//  *                   type: string
-//  *                   example: "Profile deleted successfully"
-//  *       500:
-//  *         description: Server error
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/Error'
-//  */
-// router.delete("/:id", profileController.deleteProfile);
-
-// /**
-//  * @swagger
-//  * /api/profiles/avatar:
+//  * /api/scoutProfiles/avatar:
 //  *   post:
 //  *     summary: Upload or update profile avatar
-//  *     tags: [Profiles]
+//  *     tags: [ScoutProfiles]
 //  *     security:
 //  *       - bearerAuth: []
 //  *     requestBody:
@@ -687,7 +491,137 @@ export default router;
 //  *             schema:
 //  *               $ref: '#/components/schemas/Error'
 //  */
-// router.post("/avatar", upload.single("avatar"), profileController.uploadAvatar);
+// // ✅ Avatar route BEFORE /:id to prevent route conflict
+// router.post("/avatar", upload.single("avatar"), scouterProfileController.uploadAvatar);
 
+// /**
+//  * @swagger
+//  * /api/scoutProfiles/{id}:
+//  *   get:
+//  *     summary: Get a scouter profile by ID
+//  *     tags: [ScoutProfiles]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: integer
+//  *         description: Profile ID
+//  *     responses:
+//  *       200:
+//  *         description: Profile details
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               allOf:
+//  *                 - $ref: '#/components/schemas/ScouterProfile'
+//  *                 - type: object
+//  *                   properties:
+//  *                     user:
+//  *                       type: object
+//  *                       description: Associated user information
+//  *       404:
+//  *         description: Profile not found
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  *       500:
+//  *         description: Server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.get("/:id", scouterProfileController.getScoutProfileById);
+
+// /**
+//  * @swagger
+//  * /api/scoutProfiles/{id}:
+//  *   put:
+//  *     summary: Update a scouter profile
+//  *     tags: [ScoutProfiles]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: integer
+//  *         description: Profile ID
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             type: object
+//  *             properties:
+//  *               country:
+//  *                 type: string
+//  *               city:
+//  *                 type: string
+//  *               address:
+//  *                 type: string
+//  *               bio:
+//  *                 type: string
+//  *     responses:
+//  *       200:
+//  *         description: Profile updated successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 message:
+//  *                   type: string
+//  *                   example: "Profile updated successfully"
+//  *                 data:
+//  *                   $ref: '#/components/schemas/ScouterProfile'
+//  *       500:
+//  *         description: Server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.put("/:id", scouterProfileController.updateScoutProfile);
+
+// /**
+//  * @swagger
+//  * /api/scoutProfiles/{id}:
+//  *   delete:
+//  *     summary: Delete a scouter profile
+//  *     tags: [ScoutProfiles]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: integer
+//  *         description: Profile ID
+//  *     responses:
+//  *       200:
+//  *         description: Profile deleted successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 message:
+//  *                   type: string
+//  *                   example: "Profile deleted successfully"
+//  *       404:
+//  *         description: Profile not found
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  *       500:
+//  *         description: Server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.delete("/:id", scouterProfileController.deleteScoutProfile);
 
 // export default router;
