@@ -1,10 +1,11 @@
+// ✅ With .js extension
 import {
   uploadVideo,
   uploadAvatar,
   getVideosByUser,
   getMyProfileWithVideos,
   getVideoById,
-} from '../services/videoService';
+} from '../services/videoService.js';
 
 // =========================================================
 // POST /api/videos/upload
