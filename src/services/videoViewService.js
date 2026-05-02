@@ -1,4 +1,4 @@
-import VideoViewService from '../services/videoViewService.js';
+import VideoViewService from './videoViewService.js';
 
 const VideoViewController = {
   async createView(req, res) {
