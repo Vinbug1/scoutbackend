@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { uploadMediaToGCS } from '../config/multer';
+// ✅ These also need .js extensions
+import { uploadMediaToGCS } from '../config/multer.js';
 const prisma = new PrismaClient();
 // =========================================================
 // 🔹 Common video include block (reviews + ratings + views)
