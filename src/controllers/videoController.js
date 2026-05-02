@@ -4,7 +4,7 @@ import {
   getVideosByUser,
   getMyProfileWithVideos,
   getVideoById,
-} from './video.service.js';
+} from './videoservice.js';
 
 // =========================================================
 // POST /api/videos/upload
