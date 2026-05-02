@@ -1,4 +1,4 @@
-import ChallengeService from '../services/challengeService';
+import ChallengeService from '../services/challengeService.js';
 
 const ChallengeController = {
 
