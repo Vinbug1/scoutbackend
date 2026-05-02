@@ -129,7 +129,7 @@ import paymentController from '../controllers/paymentController.js';
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/", paymentController.createPayment);
+router.post('/', paymentController.createPayment);
 
 /**
  * @swagger
@@ -153,7 +153,7 @@ router.post("/", paymentController.createPayment);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/", paymentController.getAllPayments);
+router.get('/', paymentController.getAllPayments);
 
 /**
  * @swagger
@@ -188,7 +188,7 @@ router.get("/", paymentController.getAllPayments);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/:id", paymentController.getPaymentById);
+router.get('/:id', paymentController.getPaymentById);
 
 /**
  * @swagger
@@ -245,7 +245,7 @@ router.get("/:id", paymentController.getPaymentById);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put("/:id", paymentController.updatePayment);
+router.put('/:id', paymentController.updatePayment);
 
 /**
  * @swagger
@@ -285,7 +285,7 @@ router.put("/:id", paymentController.updatePayment);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.delete("/:id", paymentController.deletePayment);
+router.delete('/:id', paymentController.deletePayment);
 
 // Optional extra routes if needed
 // router.get("/user/:userId", paymentController.getPaymentsByUser);

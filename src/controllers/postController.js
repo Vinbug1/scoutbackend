@@ -1,20 +1,17 @@
-import prisma from '../lib/prisma.js';  // or '../config/prisma.js'
-// const prisma = new PrismaClient();
+import postService from '../services/postService.js';
 
-const PostController = {
+const postController = {
+
   // CREATE a new post
   async createPost(req, res) {
     try {
       const { content, userId } = req.body;
+
       if (!content || !userId) {
         return res.status(400).json({ error: 'Content and userId are required' });
       }
-      const post = await prisma.post.create({
-        data: {
-          content,
-          userId: parseInt(userId),
-        },
-      });
+
+      const post = await postService.createPost({ content, userId });
       res.status(201).json(post);
     } catch (error) {
       console.error(error);
@@ -25,15 +22,7 @@ const PostController = {
   // READ all posts
   async getAllPosts(req, res) {
     try {
-      const posts = await prisma.post.findMany({
-        include: {
-          user: true,
-          comments: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+      const posts = await postService.getAllPosts();
       res.status(200).json(posts);
     } catch (error) {
       console.error(error);
@@ -44,62 +33,42 @@ const PostController = {
   // READ a single post by ID
   async getPostById(req, res) {
     try {
-      const { id } = req.params;
-      const post = await prisma.post.findUnique({
-        where: { id: parseInt(id) },
-        include: { user: true, comments: true },
-      });
-      if (!post) {
-        return res.status(404).json({ error: 'Post not found' });
-      }
+      const id = parseInt(req.params.id);
+      const post = await postService.getPostById(id);
       res.status(200).json(post);
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Something went wrong while fetching the post' });
+      const status = error.statusCode || 500;
+      res.status(status).json({ error: error.statusCode ? error.message : 'Something went wrong while fetching the post' });
     }
   },
 
   // UPDATE a post by ID
   async updatePost(req, res) {
     try {
-      const { id } = req.params;
+      const id = parseInt(req.params.id);
       const { content } = req.body;
-      const existingPost = await prisma.post.findUnique({
-        where: { id: parseInt(id) },
-      });
-      if (!existingPost) {
-        return res.status(404).json({ error: 'Post not found' });
-      }
-      const updatedPost = await prisma.post.update({
-        where: { id: parseInt(id) },
-        data: { content },
-      });
+      const updatedPost = await postService.updatePost(id, { content });
       res.status(200).json(updatedPost);
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Something went wrong while updating the post' });
+      const status = error.statusCode || 500;
+      res.status(status).json({ error: error.statusCode ? error.message : 'Something went wrong while updating the post' });
     }
   },
 
   // DELETE a post by ID
   async deletePost(req, res) {
     try {
-      const { id } = req.params;
-      const existingPost = await prisma.post.findUnique({
-        where: { id: parseInt(id) },
-      });
-      if (!existingPost) {
-        return res.status(404).json({ error: 'Post not found' });
-      }
-      await prisma.post.delete({
-        where: { id: parseInt(id) },
-      });
+      const id = parseInt(req.params.id);
+      await postService.deletePost(id);
       res.status(200).json({ message: 'Post deleted successfully' });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Something went wrong while deleting the post' });
+      const status = error.statusCode || 500;
+      res.status(status).json({ error: error.statusCode ? error.message : 'Something went wrong while deleting the post' });
     }
-  }
+  },
 };
 
-export default PostController;
+export default postController;

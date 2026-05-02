@@ -1,16 +1,11 @@
-import prisma from '../lib/prisma.js';  // or '../config/prisma.js'
-// const prisma = new PrismaClient();
+import followerService from '../services/followerService.js';
 
-const FollowerController = {
+const followerController = {
+
   // Get all followers
   async getAll(req, res) {
     try {
-      const followers = await prisma.follower.findMany({
-        include: {
-          follower: true,
-          followed: true,
-        },
-      });
+      const followers = await followerService.getAll();
       res.json(followers);
     } catch (error) {
       console.error(error);
@@ -20,39 +15,27 @@ const FollowerController = {
 
   // Get a single follower relationship by ID
   async getById(req, res) {
-    const { id } = req.params;
     try {
-      const follower = await prisma.follower.findUnique({
-        where: { id: parseInt(id) },
-        include: {
-          follower: true,
-          followed: true,
-        },
-      });
-      if (!follower) {
-        return res.status(404).json({ error: 'Follower not found' });
-      }
+      const id = parseInt(req.params.id);
+      const follower = await followerService.getById(id);
       res.json(follower);
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Failed to fetch follower' });
+      const status = error.statusCode || 500;
+      res.status(status).json({ error: error.statusCode ? error.message : 'Failed to fetch follower' });
     }
   },
 
   // Create a new follower relationship
   async create(req, res) {
-    const { followerId, followedId } = req.body;
-    if (followerId === followedId) {
-      return res.status(400).json({ error: 'User cannot follow themselves' });
-    }
     try {
-      const newFollower = await prisma.follower.create({
-        data: { followerId, followedId },
-        include: {
-          follower: true,
-          followed: true,
-        },
-      });
+      const { followerId, followedId } = req.body;
+
+      if (followerId === followedId) {
+        return res.status(400).json({ error: 'User cannot follow themselves' });
+      }
+
+      const newFollower = await followerService.create({ followerId, followedId });
       res.status(201).json(newFollower);
     } catch (error) {
       console.error(error);
@@ -65,17 +48,11 @@ const FollowerController = {
 
   // Update a follower relationship
   async update(req, res) {
-    const { id } = req.params;
-    const { followedId } = req.body;
     try {
-      const updatedFollower = await prisma.follower.update({
-        where: { id: parseInt(id) },
-        data: { followedId },
-        include: {
-          follower: true,
-          followed: true,
-        },
-      });
+      const id = parseInt(req.params.id);
+      const { followedId } = req.body;
+
+      const updatedFollower = await followerService.update(id, { followedId });
       res.json(updatedFollower);
     } catch (error) {
       console.error(error);
@@ -91,9 +68,9 @@ const FollowerController = {
 
   // Delete a follower relationship
   async delete(req, res) {
-    const { id } = req.params;
     try {
-      await prisma.follower.delete({ where: { id: parseInt(id) } });
+      const id = parseInt(req.params.id);
+      await followerService.delete(id);
       res.json({ message: 'Follower relationship deleted successfully' });
     } catch (error) {
       console.error(error);
@@ -105,4 +82,4 @@ const FollowerController = {
   }
 };
 
-export default FollowerController;
+export default followerController;
