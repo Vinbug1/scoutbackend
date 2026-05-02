@@ -1,4 +1,3 @@
-// controllers/videoViewController.js
 import VideoViewService from '../services/videoViewService.js';
 
 const VideoViewController = {

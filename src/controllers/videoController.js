@@ -4,7 +4,7 @@ import {
   getVideosByUser,
   getMyProfileWithVideos,
   getVideoById,
-} from '../services/videoservice';
+} from '../services/videoService';
 
 // =========================================================
 // POST /api/videos/upload
@@ -108,7 +108,7 @@ export const handleGetVideo = async (req, res) => {
     }
 
     // viewerId: present if request is authenticated, null otherwise
-    const viewerId = req.user?.id ?? null;
+    const viewerId = req.user?.userId ?? null;
 
     // Basic IP hashing for anonymous view deduplication
     const rawIp  = req.ip || req.headers['x-forwarded-for'] || '';
