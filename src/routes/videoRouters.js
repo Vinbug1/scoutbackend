@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { upload }  from './media-upload.js';
-import {handleVideoUpload,handleAvatarUpload,handleGetUserVideos,handleGetMyProfile,handleGetVideo,} from './video.controller.js';
+import { upload }  from '../config/multer';
+import {handleVideoUpload,handleAvatarUpload,handleGetUserVideos,handleGetMyProfile,handleGetVideo,} from './videoController.js';
 
 // import { protect, optionalAuth } from './middlewares/auth.js';
 

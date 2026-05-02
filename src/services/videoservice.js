@@ -1,4 +1,4 @@
-import { uploadMediaToGCS } from './media-upload.js';
+import { uploadMediaToGCS } from '../config/multer';
 import { prisma } from './prisma-client.js'; // adjust path as needed
 
 // =========================================================
