@@ -1,5 +1,4 @@
 // routes/videoViewRoutes.js
-
 import express from 'express';
 import controller from '../controllers/videoViewController.js';
 
