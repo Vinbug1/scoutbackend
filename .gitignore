@@ -1,5 +1,8 @@
 node_modules
 dist
 .env
-db-data
 .env.local
+db-data
+
+# Google service account key (VERY IMPORTANT)
+google-service-account.jsonscoutimg-aa6e95184dbd.json

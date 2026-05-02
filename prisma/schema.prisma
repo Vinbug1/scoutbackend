@@ -18,6 +18,7 @@ enum PaymentStatus {
   SUCCESS
   FAILED
 }
+
 enum ParticipantStatus {
   ACTIVE
   COMPLETED
@@ -25,38 +26,118 @@ enum ParticipantStatus {
   PAUSED
 }
 
+enum Recommendation {
+  RECOMMEND_FOR_TRIAL
+  FILE_FOR_FUTURE_REFERENCE
+  NOT_SUITABLE
+}
+
+model ScouterReport {
+  id        Int      @id @default(autoincrement())
+  scouterId Int
+  playerId  Int
+  createdAt DateTime @default(now())
+
+  // 1. Match Info (snapshot at time of scouting)
+  matchScouted String?
+  ageGroup     String?
+  timesSeen    Int?
+  currentClub  String?
+
+  // 2. Scout's Overall Assessment
+  overallAssessment String?
+
+  // 3A. Technical Attributes (1–10)
+  firstTouch   Int?
+  ballControl  Int?
+  dribbling    Int?
+  passingShort Int?
+  passingLong  Int?
+  throughBalls Int?
+  smartPass    Int?
+  shooting     Int?
+  heading      Int?
+  tackling     Int?
+  weakerFoot   Int?
+
+  // 3B. Tactical Attributes (1–10)
+  positionalAwareness Int?
+  decisionMaking      Int?
+  movementOffBall     Int?
+  gameIntelligence    Int?
+  transitions         Int?
+
+  // 3C. Physical Attributes (1–10)
+  pace            Int?
+  agilityBalance  Int?
+  strength        Int?
+  staminaWorkRate Int?
+  jumpingRate     Int?
+
+  // 3D. Psychological Attributes (1–10)
+  composure               Int?
+  braveryCommitment       Int?
+  determination           Int?
+  leadershipCommunication Int?
+  coachability            Int?
+
+  // 4 & 5. Summaries
+  keyStrengths        String[]
+  areasForDevelopment String[]
+
+  // 6. Final Recommendation
+  recommendation Recommendation?
+
+  scouter User @relation("ReportsByScouter", fields: [scouterId], references: [id])
+  player  User @relation("ReportsAboutPlayer", fields: [playerId], references: [id])
+
+  @@index([playerId])
+  @@index([scouterId])
+}
+
 model User {
-  id         Int        @id @default(autoincrement())
-  email      String     @unique
-  password   String
-  fullname   String
-  role       Role       @default(PLAYER)
-  createdAt  DateTime   @default(now())
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  fullname  String
+  role      Role     @default(PLAYER)
+  createdAt DateTime @default(now())
 
-  profile    Profile?
-  videos     Video[]
-  views      VideoView[]
-  comments   Comment[]
-  ratings    Rating[]
-  followers  Follower[]        @relation("Followed")
-  following  Follower[]        @relation("Following")
-  posts      Post[]
-  reports    ScouterReport[]   @relation("ReportsByScouter")
-  reportsScouted ScouterReport[]  @relation("ReportsAboutScouter")
-  reportsAbout PlayerReport[]  @relation("ReportsAboutPlayer")
-  payments   Payment[]
-  rankings   Ranking[]
-  chatMessages ChatMessage[]
-  challengesCreated Challenge[] @relation("ChallengeCreator")
+  // OTP Verification fields
+  otp        String?
+  otpExpiry  DateTime?
+  isVerified Boolean   @default(false)
+
+  profile           Profile?
+  scoutProfile      ScoutProfile?
+  videos            Video[]
+  views             VideoView[]
+  comments          Comment[]
+  ratings           Rating[]
+  followers         Follower[]             @relation("Followed")
+  following         Follower[]             @relation("Following")
+  posts             Post[]
+
+  // Scouter only: reports written by this user
+  reportsFiled      ScouterReport[]        @relation("ReportsByScouter")
+
+  // Player only: reports written about this user
+  reportsAboutMe    ScouterReport[]        @relation("ReportsAboutPlayer")
+
+  payments          Payment[]
+  rankings          Ranking[]
+  chatMessages      ChatMessage[]
+  chatRoomMembers   ChatRoomMember[]
+  challengesCreated Challenge[]            @relation("ChallengeCreator")
   challengesJoined  ChallengeParticipant[]
-
 }
 
 model Profile {
-  id            Int       @id @default(autoincrement())
-  userId        Int       @unique
-  user          User      @relation(fields: [userId], references: [id])
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id])
 
+  avatarUrl     String?
   position      String?
   height        Float?
   favouriteFoot String?
@@ -69,40 +150,54 @@ model Profile {
   createdAt     DateTime  @default(now())
 }
 
+model ScoutProfile {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id])
+
+  avatarUrl String?
+  club      String?
+  country   String?
+  city      String?
+  address   String?
+  bio       String?
+  createdAt DateTime @default(now())
+}
+
 model Video {
-  id           Int         @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   videoUrl     String
   thumbnailUrl String?
   title        String
   description  String?
-  published    Boolean     @default(false)
+  published    Boolean  @default(false)
   durationSec  Int?
-  createdAt    DateTime    @default(now())
+  createdAt    DateTime @default(now())
 
-  playerId     Int
-  player       User        @relation(fields: [playerId], references: [id])
+  playerId Int
+  player   User @relation(fields: [playerId], references: [id])
 
-  views        VideoView[]
-  comments     Comment[]
-  ratings      Rating[]
+  views    VideoView[]
+  comments Comment[]
+  ratings  Rating[]
 
   @@index([playerId])
   @@index([createdAt])
 }
 
 model VideoView {
-  id        Int      @id @default(autoincrement())
-  videoId   Int
-  userId    Int?
-  ipHash    String?
-  viewedAt  DateTime  @default(now())
+  id       Int      @id @default(autoincrement())
+  videoId  Int
+  userId   Int?
+  ipHash   String?
+  viewedAt DateTime @default(now())
 
-  video     Video     @relation(fields: [videoId], references: [id])
-  user      User?     @relation(fields: [userId], references: [id])
+  video Video @relation(fields: [videoId], references: [id])
+  user  User? @relation(fields: [userId], references: [id])
 
+  @@unique([videoId, userId], name: "unique_view_per_user")
   @@index([videoId])
   @@index([userId])
-  @@unique([videoId, userId], name: "unique_view_per_user")
 }
 
 model Comment {
@@ -110,13 +205,13 @@ model Comment {
   text      String
   createdAt DateTime @default(now())
 
-  videoId   Int?
-  postId    Int?
-  userId    Int
+  videoId Int?
+  postId  Int?
+  userId  Int
 
-  video     Video?   @relation(fields: [videoId], references: [id])
-  post      Post?    @relation(fields: [postId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  video Video? @relation(fields: [videoId], references: [id])
+  post  Post?  @relation(fields: [postId], references: [id])
+  user  User   @relation(fields: [userId], references: [id])
 
   @@index([videoId])
   @@index([postId])
@@ -127,11 +222,11 @@ model Rating {
   score     Int
   createdAt DateTime @default(now())
 
-  videoId   Int
-  userId    Int
+  videoId Int
+  userId  Int
 
-  video     Video    @relation(fields: [videoId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  video Video @relation(fields: [videoId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
 
   @@unique([videoId, userId])
   @@index([videoId])
@@ -144,129 +239,115 @@ model Ranking {
   reason    String?
   updatedAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
-  @@index([score])
   @@unique([userId])
+  @@index([score])
 }
 
 model Challenge {
-  id           Int       @id @default(autoincrement())
-  title        String
-  description  String?
-  startAt      DateTime?
-  endAt        DateTime?
-  createdAt    DateTime  @default(now())
-  targetProgress Float @default(100) // What percentage counts as "complete"
+  id             Int       @id @default(autoincrement())
+  title          String
+  description    String?
+  startAt        DateTime?
+  endAt          DateTime?
+  createdAt      DateTime  @default(now())
+  targetProgress Float     @default(100)
 
-  creatorId    Int
-  creator      User      @relation("ChallengeCreator", fields: [creatorId], references: [id])
+  creatorId Int
+  creator   User @relation("ChallengeCreator", fields: [creatorId], references: [id])
 
   participants ChallengeParticipant[]
 }
 
 model ChallengeParticipant {
-  id            Int       @id @default(autoincrement())
-  challengeId   Int
-  userId        Int
-  joinedAt      DateTime  @default(now())
-  completedAt   DateTime?
-  progress      Float     @default(0) // 0-100 percentage
-  status        ParticipantStatus @default(ACTIVE)
-  
-  challenge     Challenge @relation(fields: [challengeId], references: [id])
-  user          User      @relation(fields: [userId], references: [id])
-  
-  // Track individual task/milestone completions
-  progressLogs  ProgressLog[]
-  
+  id          Int               @id @default(autoincrement())
+  challengeId Int
+  userId      Int
+  joinedAt    DateTime          @default(now())
+  completedAt DateTime?
+  progress    Float             @default(0)
+  status      ParticipantStatus @default(ACTIVE)
+
+  challenge Challenge @relation(fields: [challengeId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  progressLogs ProgressLog[]
+
   @@unique([challengeId, userId])
   @@index([status])
   @@index([progress])
 }
 
 model ProgressLog {
-  id            Int       @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   participantId Int
-  taskId        Int?      // optional: if challenge has specific tasks
+  taskId        Int?
   description   String
-  progressDelta Float     // how much progress this added (e.g., 10 for 10%)
-  createdAt     DateTime  @default(now())
-  
-  participant   ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  progressDelta Float
+  createdAt     DateTime @default(now())
+
+  participant ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 }
 
-
-
-
 model ChatRoom {
-  id        Int       @id @default(autoincrement())
+  id        Int              @id @default(autoincrement())
   name      String?
-  createdAt DateTime  @default(now())
+  createdAt DateTime         @default(now())
   messages  ChatMessage[]
+  members   ChatRoomMember[] // 👈 add this
 }
 
 model ChatMessage {
-  id        Int      @id @default(autoincrement())
-  roomId    Int
-  userId    Int
-  message   String
-  sentAt    DateTime @default(now())
+  id      Int      @id @default(autoincrement())
+  roomId  Int
+  userId  Int
+  message String
+  sentAt  DateTime @default(now())
 
-  room      ChatRoom @relation(fields: [roomId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  room ChatRoom @relation(fields: [roomId], references: [id])
+  user User     @relation(fields: [userId], references: [id])
 
   @@index([roomId])
   @@index([userId])
 }
 
+model ChatRoomMember {
+  id       Int      @id @default(autoincrement())
+  roomId   Int
+  userId   Int
+  joinedAt DateTime @default(now())
+
+  room ChatRoom @relation(fields: [roomId], references: [id])
+  user User     @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+}
+
 model Post {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   content   String
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
   userId    Int
 
-  user      User      @relation(fields: [userId], references: [id])
-  comments  Comment[]
+  user     User      @relation(fields: [userId], references: [id])
+  comments Comment[]
 }
 
 model Follower {
-  id         Int    @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   followerId Int
   followedId Int
   followedAt DateTime @default(now())
 
-  follower   User   @relation("Following", fields: [followerId], references: [id])
-  followed   User   @relation("Followed", fields: [followedId], references: [id])
+  follower User @relation("Following", fields: [followerId], references: [id])
+  followed User @relation("Followed", fields: [followedId], references: [id])
 
   @@unique([followerId, followedId])
   @@index([followedId])
   @@index([followerId])
 }
 
-model ScouterReport {
-  id         Int      @id @default(autoincrement())
-  scouterId  Int
-  playerId   Int
-  title      String?
-  report     String
-  createdAt  DateTime @default(now())
-
-  scouter    User     @relation("ReportsByScouter", fields: [scouterId], references: [id])
-  player     User     @relation("ReportsAboutScouter", fields: [playerId], references: [id])
-
-  @@index([playerId])
-  @@index([scouterId])
-}
-
-model PlayerReport {
-  id        Int      @id @default(autoincrement())
-  playerId  Int
-  data      Json
-  createdAt DateTime @default(now())
-
-  player    User     @relation("ReportsAboutPlayer", fields: [playerId], references: [id])
-}
 
 model Payment {
   id          Int           @id @default(autoincrement())
@@ -277,7 +358,7 @@ model Payment {
   providerRef String?
   createdAt   DateTime      @default(now())
 
-  user        User          @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([status])

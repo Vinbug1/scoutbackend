@@ -2,18 +2,18 @@ import swaggerJSDoc from "swagger-jsdoc";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Determine base URL based on environment
 const baseUrl =
-  process.env.SWAGGER_SERVER_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "#"
-    : "http://localhost:4000");
+  process.env.NODE_ENV === "production"
+    ? "https://scoutbackend-xm5k.onrender.com"
+    : "http://localhost:4000";
+
+console.log("📁 Swagger scanning routes at:", path.resolve(__dirname, "../routes/*.js"));
+console.log("🌍 Swagger base URL:", `${baseUrl}/api`);
 
 const swaggerDefinition = {
   openapi: "3.0.0",
@@ -21,10 +21,14 @@ const swaggerDefinition = {
     title: "Scouter API Documentation",
     version: "1.0.0",
     description: "API documentation for Scouter backend system",
+    contact: {
+      name: "Scouter Team",
+      email: "info@scouter.com"
+    }
   },
   servers: [
     {
-      url: baseUrl,
+      url: `${baseUrl}/api`, // ✅ fixed
       description:
         process.env.NODE_ENV === "production"
           ? "Production server"
@@ -40,21 +44,19 @@ const swaggerDefinition = {
       },
     },
   },
-  security: [
-    {
-      bearerAuth: [],
-    },
-  ],
+  security: [{ bearerAuth: [] }],
 };
 
 const options = {
   swaggerDefinition,
   apis: [
     path.resolve(__dirname, "../routes/*.js"),
-    path.resolve(__dirname, "../routes/**/*.js"), // Also picks up nested routes
+    path.resolve(__dirname, "../routes/**/*.js"),
   ],
 };
 
 const swaggerSpec = swaggerJSDoc(options);
+
+console.log("📚 Swagger paths found:", Object.keys(swaggerSpec.paths || {}).length);
 
 export default swaggerSpec;
