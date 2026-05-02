@@ -1,71 +1,51 @@
-import VideoViewService from './videoViewService.js';
+import prisma from '../lib/prisma.js';
 
-const VideoViewController = {
-  async createView(req, res) {
-    try {
-      const newView = await VideoViewService.createView(req.body);
-      return res.status(201).json(newView);
-    } catch (err) {
-      console.error(err);
-      if (err.code === 'P2002') {
-        return res.status(400).json({
-          message: 'User has already viewed this video (unique constraint)',
-        });
-      }
-      return res.status(500).json({ error: 'Failed to create video view' });
-    }
+const VideoViewService = {
+  async createView({ videoId, userId, ipHash }) {
+    return await prisma.videoView.create({
+      data: {
+        videoId,
+        userId: userId || null,
+        ipHash: ipHash || null,
+      },
+    });
   },
 
-  async getAllViews(req, res) {
-    try {
-      const views = await VideoViewService.getAllViews();
-      return res.status(200).json(views);
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Failed to fetch views' });
-    }
+  async getAllViews() {
+    return await prisma.videoView.findMany({
+      include: {
+        video: true,
+        user: true,
+      },
+    });
   },
 
-  async getViewById(req, res) {
-    try {
-      const id = Number(req.params.id);
-      const view = await VideoViewService.getViewById(id);
-      if (!view) {
-        return res.status(404).json({ message: 'Video view not found' });
-      }
-      return res.status(200).json(view);
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Failed to fetch video view' });
-    }
+  async getViewById(id) {
+    return await prisma.videoView.findUnique({
+      where: { id },
+      include: {
+        video: true,
+        user: true,
+      },
+    });
   },
 
-  async updateView(req, res) {
-    try {
-      const id = Number(req.params.id);
-      const updatedView = await VideoViewService.updateView(id, req.body);
-      return res.status(200).json(updatedView);
-    } catch (err) {
-      console.error(err);
-      if (err.code === 'P2002') {
-        return res.status(400).json({
-          message: 'Duplicate view — this user already viewed this video',
-        });
-      }
-      return res.status(500).json({ error: 'Failed to update video view' });
-    }
+  async updateView(id, { videoId, userId, ipHash }) {
+    return await prisma.videoView.update({
+      where: { id },
+      data: {
+        videoId,
+        userId: userId || null,
+        ipHash: ipHash || null,
+      },
+    });
   },
 
-  async deleteView(req, res) {
-    try {
-      const id = Number(req.params.id);
-      await VideoViewService.deleteView(id);
-      return res.status(200).json({ message: 'Video view deleted' });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Failed to delete video view' });
-    }
+  async deleteView(id) {
+    return await prisma.videoView.delete({
+      where: { id },
+    });
   },
 };
 
-export default VideoViewController;
+export default VideoViewService;
