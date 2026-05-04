@@ -106,8 +106,8 @@ async function startServer() {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-      console.log(`📚 API Docs: http://c0kk488c4skc448wg008ogck.server.scouter.com/api-docs`);
-      console.log(`🏥 Health Check: http://c0kk488c4skc448wg008ogck.server.scouter.com/health`);
+      console.log(`📚 API Docs: http://c0kk488c4skc448wg008ogck.server.flipzid.com/api-docs`);
+      console.log(`🏥 Health Check: http://c0kk488c4skc448wg008ogck.server.flipzid.com/health`);
     });
   } catch (error) {
     console.error('❌ Failed to connect to the database:', error);
