@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { upload } from '../config/multer.js';
 import { handleVideoUpload, handleAvatarUpload, handleGetUserVideos, handleGetMyProfile, handleGetVideo } from '../controllers/videoController.js';
-import { verifyToken as protect, optionalAuth } from '../middleware/auth.js';
+import { verifyToken as protect} from '../middleware/auth.js';
 // import { protect, optionalAuth } from './middlewares/auth.js';
 
 const router = Router();
@@ -245,7 +245,7 @@ router.get('/users/:userId/videos', handleGetUserVideos);
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/videos/:videoId', optionalAuth, handleGetVideo);
+router.get('/videos/:videoId', protect, handleGetVideo);
 
 export default router;
 
