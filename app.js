@@ -103,12 +103,12 @@ async function startServer() {
     await prisma.$connect();
     console.log('✅ Connected to the PostgreSQL database');
 
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-      console.log(`📚 API Docs: https://scoutbackend-xm5k.onrender.com/api-docs`);
-      console.log(`🏥 Health Check: https://scoutbackend-xm5k.onrender.com/health`);
-    });
+    // app.listen(PORT, '0.0.0.0', () => {
+    //   console.log(`🚀 Server running on port ${PORT}`);
+    //   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+    //   console.log(`📚 API Docs: https://scoutbackend-xm5k.onrender.com/api-docs`);
+    //   console.log(`🏥 Health Check: https://scoutbackend-xm5k.onrender.com/health`);
+    // });
   } catch (error) {
     console.error('❌ Failed to connect to the database:', error);
     process.exit(1);
