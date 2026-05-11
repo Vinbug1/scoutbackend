@@ -1,12 +1,12 @@
 import prisma from '../lib/prisma.js';
 
-const scouterReportService = {
+const scoutReportService = {
 
   async create(data) {
-    const { scouterId, playerId, timesSeen, keyStrengths, areasForDevelopment, recommendation, ...rest } = data;
+    const { scoutId, playerId, timesSeen, keyStrengths, areasForDevelopment, recommendation, ...rest } = data;
 
-    const scouter = await prisma.user.findUnique({ where: { id: parseInt(scouterId) } });
-    if (!scouter || scouter.role !== 'SCOUT') {
+    const scout = await prisma.user.findUnique({ where: { id: parseInt(scoutId) } });
+    if (!scout || scout.role !== 'SCOUT') {
       throw { status: 403, message: 'Only scouts can file reports' };
     }
 
@@ -15,9 +15,9 @@ const scouterReportService = {
       throw { status: 404, message: 'Player not found' };
     }
 
-    return prisma.scouterReport.create({
+    return prisma.scoutReport.create({
       data: {
-        scouterId: parseInt(scouterId),
+        scoutId: parseInt(scoutId),
         playerId: parseInt(playerId),
         timesSeen: timesSeen ? parseInt(timesSeen) : null,
         keyStrengths: keyStrengths ?? [],
@@ -26,7 +26,7 @@ const scouterReportService = {
         ...rest,
       },
       include: {
-        scouter: { select: { id: true, fullname: true, email: true } },
+        scout: { select: { id: true, fullname: true, email: true } },
         player: {
           select: {
             id: true, fullname: true, email: true,
@@ -37,9 +37,9 @@ const scouterReportService = {
     });
   },
 
-  async getAll({ scouterId, playerId, recommendation, page = 1, limit = 10 }) {
+  async getAll({ scoutId, playerId, recommendation, page = 1, limit = 10 }) {
     const where = {};
-    if (scouterId) where.scouterId = parseInt(scouterId);
+    if (scoutId) where.scoutId = parseInt(scoutId);
     if (playerId) where.playerId = parseInt(playerId);
     if (recommendation) where.recommendation = recommendation;
 
@@ -47,11 +47,11 @@ const scouterReportService = {
     const take = parseInt(limit);
 
     const [reports, total] = await Promise.all([
-      prisma.scouterReport.findMany({
+      prisma.scoutReport.findMany({
         where, skip, take,
         orderBy: { createdAt: 'desc' },
         include: {
-          scouter: { select: { id: true, fullname: true, email: true } },
+          scout: { select: { id: true, fullname: true, email: true } },
           player: {
             select: {
               id: true, fullname: true, email: true,
@@ -60,7 +60,7 @@ const scouterReportService = {
           },
         },
       }),
-      prisma.scouterReport.count({ where }),
+      prisma.scoutReport.count({ where }),
     ]);
 
     return {
@@ -70,10 +70,10 @@ const scouterReportService = {
   },
 
   async getById(id) {
-    const report = await prisma.scouterReport.findUnique({
+    const report = await prisma.scoutReport.findUnique({
       where: { id },
       include: {
-        scouter: { select: { id: true, fullname: true, email: true } },
+        scout: { select: { id: true, fullname: true, email: true } },
         player: {
           select: {
             id: true, fullname: true, email: true,
@@ -87,16 +87,16 @@ const scouterReportService = {
     return report;
   },
 
-  async update(id, requestingScouterId, data) {
-    const existing = await prisma.scouterReport.findUnique({ where: { id } });
+  async update(id, requestingScoutId, data) {
+    const existing = await prisma.scoutReport.findUnique({ where: { id } });
     if (!existing) throw { status: 404, message: 'Report not found' };
-    if (existing.scouterId !== parseInt(requestingScouterId)) {
+    if (existing.scoutId !== parseInt(requestingScoutId)) {
       throw { status: 403, message: 'You can only update your own reports' };
     }
 
     const { timesSeen, ...rest } = data;
 
-    return prisma.scouterReport.update({
+    return prisma.scoutReport.update({
       where: { id },
       data: {
         ...rest,
@@ -106,10 +106,10 @@ const scouterReportService = {
   },
 
   async delete(id) {
-    const existing = await prisma.scouterReport.findUnique({ where: { id } });
+    const existing = await prisma.scoutReport.findUnique({ where: { id } });
     if (!existing) throw { status: 404, message: 'Report not found' };
-    await prisma.scouterReport.delete({ where: { id } });
+    await prisma.scoutReport.delete({ where: { id } });
   },
 };
 
-export default scouterReportService;
+export default scoutReportService;
