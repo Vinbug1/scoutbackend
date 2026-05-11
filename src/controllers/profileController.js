@@ -1,31 +1,68 @@
-import express from 'express';
-import multer from 'multer';
-import profileController from '../controllers/profileController.js';
-import { verifyToken as authenticate,authorizeRoles} from '../middleware/auth.js';
+import profileService from '../services/profileService.js';
 
-const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const ProfileController = {
 
-// ⚠️ Avatar route BEFORE /:id
-// ✅ Only PLAYER can upload avatar
-router.post(
-  '/avatar',
-  authenticate,
-  authorizeRoles('PLAYER'),
-  upload.single('avatar'),
-  profileController.uploadAvatar
-);
+  // ✅ Public - anyone can view all player profiles
+  async getProfiles(req, res) {
+    try {
+      const result = await profileService.getAll(req.query);
+      res.status(200).json(result);
+    } catch (err) {
+      res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to fetch profiles' });
+    }
+  },
 
-// ✅ Anyone can view profiles
-router.get('/',    profileController.getProfiles);
-router.get('/:id', profileController.getProfileById);
+  // ✅ Public - anyone can view a player profile by userId
+  async getProfileById(req, res) {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
 
-// ✅ Only PLAYER can update or delete their own profile
-router.put('/',    authenticate, authorizeRoles('PLAYER'), profileController.updateProfile);
-router.delete('/', authenticate, authorizeRoles('PLAYER'), profileController.deleteProfile);
+      const profile = await profileService.getById(userId); // ✅ userId
+      res.status(200).json({ data: profile });
+    } catch (err) {
+      res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to fetch profile' });
+    }
+  },
 
-export default router;
+  // ✅ PLAYER only - can only update their own profile
+  async updateProfile(req, res) {
+    try {
+      const userId = req.user.userId; // ✅ from JWT, not route param
 
+      const profile = await profileService.update(userId, req.body);
+      res.status(200).json({ message: 'Profile updated successfully', data: profile });
+    } catch (err) {
+      res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to update profile' });
+    }
+  },
+
+  // ✅ PLAYER only - can only delete their own profile
+  async deleteProfile(req, res) {
+    try {
+      const userId = req.user.userId; // ✅ from JWT, not route param
+
+      await profileService.delete(userId);
+      res.status(200).json({ message: 'Profile deleted successfully' });
+    } catch (err) {
+      res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to delete profile' });
+    }
+  },
+
+  // ✅ PLAYER only - upload their own avatar
+  async uploadAvatar(req, res) {
+    try {
+      const userId = req.user.userId; // ✅ from JWT
+
+      const avatarUrl = await profileService.uploadAvatar(userId, req.file);
+      res.status(200).json({ message: 'Avatar uploaded successfully', avatarUrl });
+    } catch (err) {
+      res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
+    }
+  },
+};
+
+export default ProfileController;
 
 
 
@@ -89,7 +126,7 @@ export default router;
 
 //   async uploadAvatar(req, res) {
 //     try {
-//       const avatarUrl = await profileService.uploadAvatar(req.user.userId, req.file);
+//       const avatarUrl = await profileService.uploadAvatar(req.user.id, req.file);
 //       res.status(200).json({ message: 'Avatar uploaded successfully', avatarUrl });
 //     } catch (err) {
 //       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
@@ -396,7 +433,7 @@ export default router;
 // //         return res.status(400).json({ error: 'No image file provided' });
 // //       }
   
-// //       const userId = req.user.userId;
+// //       const userId = req.user.id;
   
 // //       // 👇 Guard: make sure profile exists first
 // //       const existing = await prisma.profile.findUnique({ where: { userId } });
