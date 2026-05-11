@@ -430,7 +430,7 @@ router.get('/:id', authenticate, userController.getUserById);
  *       500:
  *         description: Server error
  */
-router.get('/', authenticate, authorizeRoles('ADMIN'), userController.getUsers);
+router.get('/',  authorizeRoles('ADMIN'), userController.getUsers);
 
 /**
  * @swagger
