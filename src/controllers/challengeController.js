@@ -14,7 +14,7 @@ const ChallengeController = {
                 description,
                 startAt,
                 endAt,
-                creatorId: req.user.id,  // ✅ Use authenticated user's ID
+                creatorId: req.user.userId,  // ✅ Use authenticated user's ID
             });
 
             res.status(201).json({
@@ -76,7 +76,7 @@ const ChallengeController = {
             }
 
             // Check authorization (creator or admin)
-            if (existingChallenge.creatorId !== req.user.id && req.user.role !== 'admin') {
+            if (existingChallenge.creatorId !== req.user.userId && req.user.role !== 'admin') {
                 return res.status(403).json({ error: "Not authorized to update this challenge" });
             }
 
@@ -148,7 +148,7 @@ export default ChallengeController;
 //                     description,
 //                     startAt: startAt ? new Date(startAt) : null,
 //                     endAt: endAt ? new Date(endAt) : null,
-//                     creatorId: req.user.id,  // ✅ Use authenticated user's ID
+//                     creatorId: req.user.userId,  // ✅ Use authenticated user's ID
 //                 }
 //             });
     
@@ -227,7 +227,7 @@ export default ChallengeController;
 //             }
 
 //             // Check authorization (creator or admin)
-//             if (existingChallenge.creatorId !== req.user.id && req.user.role !== 'admin') {
+//             if (existingChallenge.creatorId !== req.user.userId && req.user.role !== 'admin') {
 //                 return res.status(403).json({ error: "Not authorized to update this challenge" });
 //             }
 
