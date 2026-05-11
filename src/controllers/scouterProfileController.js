@@ -2,8 +2,7 @@ import scouterProfileService from '../services/scouterProfileService.js';
 
 const ScouterProfileController = {
 
-
-
+  // ✅ Public - anyone can view all scout profiles
   async getScoutProfiles(req, res) {
     try {
       const result = await scouterProfileService.getAll(req.query);
@@ -13,46 +12,49 @@ const ScouterProfileController = {
     }
   },
 
+  // ✅ Public - anyone can view a scout profile by userId
   async getScoutProfileById(req, res) {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ error: 'Invalid profile ID' });
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
 
-      const profile = await scouterProfileService.getById(id);
+      const profile = await scouterProfileService.getById(userId); // ✅ userId
       res.status(200).json({ data: profile });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to fetch scout profile' });
     }
   },
 
+  // ✅ SCOUT only - can only update their own profile
   async updateScoutProfile(req, res) {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ error: 'Invalid profile ID' });
+      const userId = req.user.userId; // ✅ from JWT, not route param
 
-      const profile = await scouterProfileService.update(id, req.body);
+      const profile = await scouterProfileService.update(userId, req.body);
       res.status(200).json({ message: 'Scout profile updated successfully', data: profile });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to update scout profile' });
     }
   },
 
+  // ✅ SCOUT only - can only delete their own profile
   async deleteScoutProfile(req, res) {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ error: 'Invalid profile ID' });
+      const userId = req.user.userId; // ✅ from JWT, not route param
 
-      await scouterProfileService.delete(id);
+      await scouterProfileService.delete(userId);
       res.status(200).json({ message: 'Scout profile deleted successfully' });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to delete scout profile' });
     }
   },
 
+  // ✅ SCOUT only - upload their own avatar
   async uploadAvatar(req, res) {
     try {
-      // ✅ Fixed: was req.user?.id — auth middleware sets req.user.id
-      const avatarUrl = await scouterProfileService.uploadAvatar(req.user.id, req.file);
+      const userId = req.user.userId; // ✅ from JWT
+
+      const avatarUrl = await scouterProfileService.uploadAvatar(userId, req.file);
       res.status(200).json({ message: 'Avatar uploaded successfully', avatarUrl });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
@@ -76,265 +78,343 @@ export default ScouterProfileController;
 
 
 
-
-
-// import prisma from '../lib/prisma.js';
-// import { uploadMediaToGCS } from '../config/multer.js';
+// import scouterProfileService from '../services/scouterProfileService.js';
 
 // const ScouterProfileController = {
 
-//   // =========================
-//   // CREATE PROFILE
-//   // =========================
-//   async createScoutProfile(req, res) {
-//     try {
-//       const { userId, country, city, address, bio } = req.body;
 
-//       // ✅ Validate required field
-//       if (!userId) {
-//         return res.status(400).json({ error: 'userId is required' });
-//       }
 
-//       const profile = await prisma.profile.create({
-//         data: { userId, country, city, address, bio }
-//       });
-
-//       res.status(201).json({
-//         message: "Profile created successfully",
-//         data: profile
-//       });
-//     } catch (error) {
-//       res.status(500).json({ error: error.message });
-//     }
-//   },
-
-//   // =========================
-//   // GET ALL PROFILES
-//   // =========================
 //   async getScoutProfiles(req, res) {
 //     try {
-//       const {
-//         page = 1,
-//         limit = 10,
-//         position,
-//         country,
-//         gender,
-//         search
-//       } = req.query;
-
-//       const skip = (parseInt(page) - 1) * parseInt(limit);
-//       const take = parseInt(limit);
-
-//       // Build dynamic filters
-//       const where = {};
-
-//       if (position) where.position = position;
-//       if (country) where.country = country;
-//       if (gender) where.gender = gender;
-
-//       if (search) {
-//         where.user = {
-//           OR: [
-//             { firstName: { contains: search, mode: 'insensitive' } },
-//             { lastName:  { contains: search, mode: 'insensitive' } },
-//           ]
-//         };
-//       }
-
-//       const [profiles, total] = await Promise.all([
-//         prisma.profile.findMany({
-//           where,
-//           skip,
-//           take,
-//           orderBy: { createdAt: 'desc' },
-//           select: {
-//             id: true,
-//             position: true,
-//             height: true,
-//             favouriteFoot: true,
-//             strengths: true,
-//             gender: true,
-//             country: true,
-//             city: true,
-//             dob: true,
-//             bio: true,
-//             avatarUrl: true,
-//             user: {
-//               select: {
-//                 id: true,
-//                 firstName: true,
-//                 lastName: true,
-//                 email: true,
-//               }
-//             }
-//           }
-//         }),
-//         prisma.profile.count({ where })
-//       ]);
-
-//       res.status(200).json({
-//         data: profiles,
-//         meta: {
-//           total,
-//           page: parseInt(page),
-//           limit: take,
-//           totalPages: Math.ceil(total / take),
-//           hasNextPage: skip + take < total,
-//           hasPrevPage: parseInt(page) > 1,
-//         }
-//       });
-
-//     } catch (error) {
-//       res.status(500).json({ error: error.message });
+//       const result = await scouterProfileService.getAll(req.query);
+//       res.status(200).json(result);
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to fetch scout profiles' });
 //     }
 //   },
 
-//   // =========================
-//   // GET PROFILE BY ID
-//   // =========================
 //   async getScoutProfileById(req, res) {
 //     try {
 //       const id = parseInt(req.params.id);
+//       if (isNaN(id)) return res.status(400).json({ error: 'Invalid profile ID' });
 
-//       if (isNaN(id)) {
-//         return res.status(400).json({ error: 'Invalid profile ID' });
-//       }
-
-//       const profile = await prisma.profile.findUnique({
-//         where: { id },
-//         select: {
-//           id: true,
-//           position: true,
-//           height: true,
-//           favouriteFoot: true,
-//           strengths: true,
-//           gender: true,
-//           country: true,
-//           city: true,
-//           dob: true,
-//           bio: true,
-//           avatarUrl: true,
-//           createdAt: true,
-//           user: {
-//             select: {
-//               id: true,
-//               firstName: true,
-//               lastName: true,
-//               email: true,
-//             }
-//           }
-//         }
-//       });
-
-//       if (!profile) {
-//         return res.status(404).json({ error: 'Profile not found' });
-//       }
-
+//       const profile = await scouterProfileService.getById(id);
 //       res.status(200).json({ data: profile });
-
-//     } catch (error) {
-//       res.status(500).json({ error: error.message });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to fetch scout profile' });
 //     }
 //   },
 
-//   // =========================
-//   // UPDATE PROFILE
-//   // =========================
 //   async updateScoutProfile(req, res) {
 //     try {
 //       const id = parseInt(req.params.id);
+//       if (isNaN(id)) return res.status(400).json({ error: 'Invalid profile ID' });
 
-//       // ✅ Validate ID
-//       if (isNaN(id)) {
-//         return res.status(400).json({ error: 'Invalid profile ID' });
-//       }
-
-//       const { country, city, address, bio } = req.body;
-
-//       // ✅ Check profile exists before updating
-//       const existing = await prisma.profile.findUnique({ where: { id } });
-//       if (!existing) {
-//         return res.status(404).json({ error: 'Profile not found' });
-//       }
-
-//       const profile = await prisma.profile.update({
-//         where: { id },
-//         data: { country, city, address, bio }
-//       });
-
-//       res.status(200).json({
-//         message: "Profile updated successfully",
-//         data: profile
-//       });
-//     } catch (error) {
-//       res.status(500).json({ error: error.message });
+//       const profile = await scouterProfileService.update(id, req.body);
+//       res.status(200).json({ message: 'Scout profile updated successfully', data: profile });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to update scout profile' });
 //     }
 //   },
 
-//   // =========================
-//   // DELETE PROFILE
-//   // =========================
 //   async deleteScoutProfile(req, res) {
 //     try {
 //       const id = parseInt(req.params.id);
+//       if (isNaN(id)) return res.status(400).json({ error: 'Invalid profile ID' });
 
-//       // ✅ Validate ID
-//       if (isNaN(id)) {
-//         return res.status(400).json({ error: 'Invalid profile ID' });
-//       }
-
-//       // ✅ Check profile exists before deleting
-//       const existing = await prisma.profile.findUnique({ where: { id } });
-//       if (!existing) {
-//         return res.status(404).json({ error: 'Profile not found' });
-//       }
-
-//       await prisma.profile.delete({ where: { id } });
-
-//       res.status(200).json({ message: "Profile deleted successfully" });
-//     } catch (error) {
-//       res.status(500).json({ error: error.message });
+//       await scouterProfileService.delete(id);
+//       res.status(200).json({ message: 'Scout profile deleted successfully' });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to delete scout profile' });
 //     }
 //   },
 
-//   // =========================
-//   // UPLOAD AVATAR
-//   // =========================
 //   async uploadAvatar(req, res) {
 //     try {
-//       if (!req.file) {
-//         return res.status(400).json({ error: 'No image file provided' });
-//       }
-
-//       // ✅ Make sure auth middleware is set up to populate req.user
-//       const userId = req.user?.id;
-//       if (!userId) {
-//         return res.status(401).json({ error: 'Unauthorized. Please log in.' });
-//       }
-
-//       // ✅ Check profile exists before uploading
-//       const existing = await prisma.profile.findUnique({ where: { userId } });
-//       if (!existing) {
-//         return res.status(404).json({ error: 'Profile not found. Create a profile first.' });
-//       }
-
-//       const uploaded = await uploadMediaToGCS(req.file, 'avatars');
-
-//       const profile = await prisma.profile.update({
-//         where: { userId },
-//         data: { avatarUrl: uploaded.url },
-//       });
-
-//       res.status(200).json({
-//         message: 'Avatar uploaded successfully',
-//         avatarUrl: profile.avatarUrl,
-//       });
-
-//     } catch (error) {
-//       res.status(500).json({ error: error.message });
+//       // ✅ Fixed: was req.user?.id — auth middleware sets req.user.id
+//       const avatarUrl = await scouterProfileService.uploadAvatar(req.user.id, req.file);
+//       res.status(200).json({ message: 'Avatar uploaded successfully', avatarUrl });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
 //     }
 //   },
-
 // };
 
 // export default ScouterProfileController;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// // import prisma from '../lib/prisma.js';
+// // import { uploadMediaToGCS } from '../config/multer.js';
+
+// // const ScouterProfileController = {
+
+// //   // =========================
+// //   // CREATE PROFILE
+// //   // =========================
+// //   async createScoutProfile(req, res) {
+// //     try {
+// //       const { userId, country, city, address, bio } = req.body;
+
+// //       // ✅ Validate required field
+// //       if (!userId) {
+// //         return res.status(400).json({ error: 'userId is required' });
+// //       }
+
+// //       const profile = await prisma.profile.create({
+// //         data: { userId, country, city, address, bio }
+// //       });
+
+// //       res.status(201).json({
+// //         message: "Profile created successfully",
+// //         data: profile
+// //       });
+// //     } catch (error) {
+// //       res.status(500).json({ error: error.message });
+// //     }
+// //   },
+
+// //   // =========================
+// //   // GET ALL PROFILES
+// //   // =========================
+// //   async getScoutProfiles(req, res) {
+// //     try {
+// //       const {
+// //         page = 1,
+// //         limit = 10,
+// //         position,
+// //         country,
+// //         gender,
+// //         search
+// //       } = req.query;
+
+// //       const skip = (parseInt(page) - 1) * parseInt(limit);
+// //       const take = parseInt(limit);
+
+// //       // Build dynamic filters
+// //       const where = {};
+
+// //       if (position) where.position = position;
+// //       if (country) where.country = country;
+// //       if (gender) where.gender = gender;
+
+// //       if (search) {
+// //         where.user = {
+// //           OR: [
+// //             { firstName: { contains: search, mode: 'insensitive' } },
+// //             { lastName:  { contains: search, mode: 'insensitive' } },
+// //           ]
+// //         };
+// //       }
+
+// //       const [profiles, total] = await Promise.all([
+// //         prisma.profile.findMany({
+// //           where,
+// //           skip,
+// //           take,
+// //           orderBy: { createdAt: 'desc' },
+// //           select: {
+// //             id: true,
+// //             position: true,
+// //             height: true,
+// //             favouriteFoot: true,
+// //             strengths: true,
+// //             gender: true,
+// //             country: true,
+// //             city: true,
+// //             dob: true,
+// //             bio: true,
+// //             avatarUrl: true,
+// //             user: {
+// //               select: {
+// //                 id: true,
+// //                 firstName: true,
+// //                 lastName: true,
+// //                 email: true,
+// //               }
+// //             }
+// //           }
+// //         }),
+// //         prisma.profile.count({ where })
+// //       ]);
+
+// //       res.status(200).json({
+// //         data: profiles,
+// //         meta: {
+// //           total,
+// //           page: parseInt(page),
+// //           limit: take,
+// //           totalPages: Math.ceil(total / take),
+// //           hasNextPage: skip + take < total,
+// //           hasPrevPage: parseInt(page) > 1,
+// //         }
+// //       });
+
+// //     } catch (error) {
+// //       res.status(500).json({ error: error.message });
+// //     }
+// //   },
+
+// //   // =========================
+// //   // GET PROFILE BY ID
+// //   // =========================
+// //   async getScoutProfileById(req, res) {
+// //     try {
+// //       const id = parseInt(req.params.id);
+
+// //       if (isNaN(id)) {
+// //         return res.status(400).json({ error: 'Invalid profile ID' });
+// //       }
+
+// //       const profile = await prisma.profile.findUnique({
+// //         where: { id },
+// //         select: {
+// //           id: true,
+// //           position: true,
+// //           height: true,
+// //           favouriteFoot: true,
+// //           strengths: true,
+// //           gender: true,
+// //           country: true,
+// //           city: true,
+// //           dob: true,
+// //           bio: true,
+// //           avatarUrl: true,
+// //           createdAt: true,
+// //           user: {
+// //             select: {
+// //               id: true,
+// //               firstName: true,
+// //               lastName: true,
+// //               email: true,
+// //             }
+// //           }
+// //         }
+// //       });
+
+// //       if (!profile) {
+// //         return res.status(404).json({ error: 'Profile not found' });
+// //       }
+
+// //       res.status(200).json({ data: profile });
+
+// //     } catch (error) {
+// //       res.status(500).json({ error: error.message });
+// //     }
+// //   },
+
+// //   // =========================
+// //   // UPDATE PROFILE
+// //   // =========================
+// //   async updateScoutProfile(req, res) {
+// //     try {
+// //       const id = parseInt(req.params.id);
+
+// //       // ✅ Validate ID
+// //       if (isNaN(id)) {
+// //         return res.status(400).json({ error: 'Invalid profile ID' });
+// //       }
+
+// //       const { country, city, address, bio } = req.body;
+
+// //       // ✅ Check profile exists before updating
+// //       const existing = await prisma.profile.findUnique({ where: { id } });
+// //       if (!existing) {
+// //         return res.status(404).json({ error: 'Profile not found' });
+// //       }
+
+// //       const profile = await prisma.profile.update({
+// //         where: { id },
+// //         data: { country, city, address, bio }
+// //       });
+
+// //       res.status(200).json({
+// //         message: "Profile updated successfully",
+// //         data: profile
+// //       });
+// //     } catch (error) {
+// //       res.status(500).json({ error: error.message });
+// //     }
+// //   },
+
+// //   // =========================
+// //   // DELETE PROFILE
+// //   // =========================
+// //   async deleteScoutProfile(req, res) {
+// //     try {
+// //       const id = parseInt(req.params.id);
+
+// //       // ✅ Validate ID
+// //       if (isNaN(id)) {
+// //         return res.status(400).json({ error: 'Invalid profile ID' });
+// //       }
+
+// //       // ✅ Check profile exists before deleting
+// //       const existing = await prisma.profile.findUnique({ where: { id } });
+// //       if (!existing) {
+// //         return res.status(404).json({ error: 'Profile not found' });
+// //       }
+
+// //       await prisma.profile.delete({ where: { id } });
+
+// //       res.status(200).json({ message: "Profile deleted successfully" });
+// //     } catch (error) {
+// //       res.status(500).json({ error: error.message });
+// //     }
+// //   },
+
+// //   // =========================
+// //   // UPLOAD AVATAR
+// //   // =========================
+// //   async uploadAvatar(req, res) {
+// //     try {
+// //       if (!req.file) {
+// //         return res.status(400).json({ error: 'No image file provided' });
+// //       }
+
+// //       // ✅ Make sure auth middleware is set up to populate req.user
+// //       const userId = req.user?.id;
+// //       if (!userId) {
+// //         return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+// //       }
+
+// //       // ✅ Check profile exists before uploading
+// //       const existing = await prisma.profile.findUnique({ where: { userId } });
+// //       if (!existing) {
+// //         return res.status(404).json({ error: 'Profile not found. Create a profile first.' });
+// //       }
+
+// //       const uploaded = await uploadMediaToGCS(req.file, 'avatars');
+
+// //       const profile = await prisma.profile.update({
+// //         where: { userId },
+// //         data: { avatarUrl: uploaded.url },
+// //       });
+
+// //       res.status(200).json({
+// //         message: 'Avatar uploaded successfully',
+// //         avatarUrl: profile.avatarUrl,
+// //       });
+
+// //     } catch (error) {
+// //       res.status(500).json({ error: error.message });
+// //     }
+// //   },
+
+// // };
+
+// // export default ScouterProfileController;
