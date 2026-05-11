@@ -3,33 +3,6 @@ import { uploadMediaToGCS } from '../config/multer.js';
 
 const profileService = {
 
-  // =========================
-  // CREATE
-  // =========================
-  async create({ userId, position, height, favouriteFoot, strengths, gender, country, city, dob, bio }) {
-    if (!userId) throw { status: 400, message: 'userId is required' };
-
-    const userExists = await prisma.user.findUnique({ where: { id: parseInt(userId) } });
-    if (!userExists) throw { status: 404, message: 'User not found' };
-
-    const alreadyExists = await prisma.profile.findUnique({ where: { userId: parseInt(userId) } });
-    if (alreadyExists) throw { status: 400, message: 'Profile already exists for this user' };
-
-    return prisma.profile.create({
-      data: {
-        userId: parseInt(userId),
-        position,
-        height: height ? parseFloat(height) : null,
-        favouriteFoot,
-        strengths,
-        gender,
-        country,
-        city,
-        dob: dob ? new Date(dob) : null,
-        bio,
-      },
-    });
-  },
 
   // =========================
   // GET ALL
