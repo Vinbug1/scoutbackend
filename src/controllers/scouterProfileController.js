@@ -131,8 +131,8 @@ export default ScouterProfileController;
 
 //   async uploadAvatar(req, res) {
 //     try {
-//       // ✅ Fixed: was req.user?.id — auth middleware sets req.user.id
-//       const avatarUrl = await scouterProfileService.uploadAvatar(req.user.id, req.file);
+//       // ✅ Fixed: was req.user?.id — auth middleware sets req.user.userId
+//       const avatarUrl = await scouterProfileService.uploadAvatar(req.user.userId, req.file);
 //       res.status(200).json({ message: 'Avatar uploaded successfully', avatarUrl });
 //     } catch (err) {
 //       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });

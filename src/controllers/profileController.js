@@ -90,7 +90,7 @@ export default router;
 
 //   async uploadAvatar(req, res) {
 //     try {
-//       const avatarUrl = await profileService.uploadAvatar(req.user.id, req.file);
+//       const avatarUrl = await profileService.uploadAvatar(req.user.userId, req.file);
 //       res.status(200).json({ message: 'Avatar uploaded successfully', avatarUrl });
 //     } catch (err) {
 //       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
@@ -397,7 +397,7 @@ export default router;
 // //         return res.status(400).json({ error: 'No image file provided' });
 // //       }
   
-// //       const userId = req.user.id;
+// //       const userId = req.user.userId;
   
 // //       // 👇 Guard: make sure profile exists first
 // //       const existing = await prisma.profile.findUnique({ where: { userId } });

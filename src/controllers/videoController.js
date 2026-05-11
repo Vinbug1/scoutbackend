@@ -26,7 +26,7 @@ export const handleVideoUpload = async (req, res) => {
     const video = await uploadVideo(
       req.file,
       { title: title.trim(), description, published: published === 'true' },
-      req.user.id,   // set by your auth middleware
+      req.user.userId,   // set by your auth middleware
     );
 
     return res.status(201).json({
@@ -50,7 +50,7 @@ export const handleAvatarUpload = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No image file provided.' });
     }
 
-    const profile = await uploadAvatar(req.file, req.user.id);
+    const profile = await uploadAvatar(req.file, req.user.userId);
 
     return res.status(200).json({
       success: true,
@@ -89,7 +89,7 @@ export const handleGetUserVideos = async (req, res) => {
 // =========================================================
 export const handleGetMyProfile = async (req, res) => {
   try {
-    const data = await getMyProfileWithVideos(req.user.id);
+    const data = await getMyProfileWithVideos(req.user.userId);
     return res.status(200).json({ success: true, data });
   } catch (err) {
     console.error('❌ handleGetMyProfile:', err);

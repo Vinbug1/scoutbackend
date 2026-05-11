@@ -80,7 +80,7 @@ const UserController = {
 
   async updatePassword(req, res) {
     try {
-      await userService.updatePassword({ userId: req.user.id, ...req.body });
+      await userService.updatePassword({ userId: req.user.userId, ...req.body });
       res.status(200).json({ message: 'Password updated successfully.' });
     } catch (err) {
       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
@@ -92,7 +92,7 @@ const UserController = {
   // ===========================
   async getCurrentUser(req, res) {
     try {
-      const user = await userService.getCurrentUser(req.user.id);
+      const user = await userService.getCurrentUser(req.user.userId);
       res.status(200).json(user);
     } catch (err) {
       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
@@ -557,7 +557,7 @@ export default UserController;
 //   // ===========================
 //   async updatePassword(req, res) {
 //     try {
-//       const userId = req.user.id; // set by auth middleware
+//       const userId = req.user.userId; // set by auth middleware
 //       const { currentPassword, newPassword } = req.body;
 
 //       if (!currentPassword || !newPassword) {
@@ -683,7 +683,7 @@ export default UserController;
 //   async getCurrentUser(req, res) {
 //     try {
 //       // req.user is set by auth middleware
-//       const userId = req.user.id;
+//       const userId = req.user.userId;
 
 //       const user = await prisma.user.findUnique({
 //         where: { id: userId },
