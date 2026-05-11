@@ -1,8 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import profileController from '../controllers/profileController.js';
-import { verifyToken as authenticate } from '../middleware/auth.js';
-import { authorizeRoles } from '../middleware/authorize.js';
+import { verifyToken as authenticate,authorizeRoles} from '../middleware/auth.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
