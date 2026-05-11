@@ -1,7 +1,7 @@
 import prisma from '../lib/prisma.js';
 import { uploadMediaToGCS } from '../config/multer.js';
 
-const scouterProfileService = {
+const scoutProfileService = {
 
   // =========================
   // GET ALL
@@ -104,14 +104,14 @@ const scouterProfileService = {
   },
 };
 
-export default scouterProfileService;
+export default scoutProfileService;
 
 
 
 // import prisma from '../lib/prisma.js';
 // import { uploadMediaToGCS } from '../config/multer.js';
 
-// const scouterProfileService = {
+// const scoutProfileService = {
 
 
 //   // =========================
@@ -216,4 +216,4 @@ export default scouterProfileService;
 //   },
 // };
 
-// export default scouterProfileService;
+// export default scoutProfileService;

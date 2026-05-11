@@ -1,15 +1,15 @@
-import scouterReportService from '../services/scouterReportService.js';
+import scoutReportService from '../services/scoutReportService.js';
 
-const scouterReportController = {
+const scoutReportController = {
 
   async create(req, res) {
     try {
-      const { scouterId, playerId } = req.body;
-      if (!scouterId || !playerId) {
-        return res.status(400).json({ error: 'scouterId and playerId are required' });
+      const { scoutId, playerId } = req.body;
+      if (!scoutId || !playerId) {
+        return res.status(400).json({ error: 'scoutId and playerId are required' });
       }
 
-      const report = await scouterReportService.create(req.body);
+      const report = await scoutReportService.create(req.body);
       res.status(201).json({ message: 'Report created successfully', data: report });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to create report' });
@@ -18,7 +18,7 @@ const scouterReportController = {
 
   async getAll(req, res) {
     try {
-      const result = await scouterReportService.getAll(req.query);
+      const result = await scoutReportService.getAll(req.query);
       res.status(200).json(result);
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to fetch reports' });
@@ -30,7 +30,7 @@ const scouterReportController = {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: 'Invalid report ID' });
 
-      const report = await scouterReportService.getById(id);
+      const report = await scoutReportService.getById(id);
       res.status(200).json({ data: report });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to fetch report' });
@@ -42,8 +42,8 @@ const scouterReportController = {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: 'Invalid report ID' });
 
-      const { scouterId, ...updateData } = req.body;
-      const report = await scouterReportService.update(id, scouterId, updateData);
+      const { scoutId, ...updateData } = req.body;
+      const report = await scoutReportService.update(id, scoutId, updateData);
       res.status(200).json({ message: 'Report updated successfully', data: report });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to update report' });
@@ -55,7 +55,7 @@ const scouterReportController = {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: 'Invalid report ID' });
 
-      await scouterReportService.delete(id);
+      await scoutReportService.delete(id);
       res.status(200).json({ message: 'Report deleted successfully' });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to delete report' });
@@ -63,7 +63,7 @@ const scouterReportController = {
   },
 };
 
-export default scouterReportController;
+export default scoutReportController;
 
 
 
@@ -86,13 +86,13 @@ export default scouterReportController;
 
 // import prisma from '../lib/prisma.js';
 
-// const scouterReportController = {
+// const scoutReportController = {
 
-//   // CREATE a new ScouterReport
+//   // CREATE a new ScoutReport
 //   async create(req, res) {
 //     try {
 //       const {
-//         scouterId,
+//         scoutId,
 //         playerId,
 //         // 1. Match Info
 //         matchScouted,
@@ -119,13 +119,13 @@ export default scouterReportController;
 //         recommendation,
 //       } = req.body;
 
-//       if (!scouterId || !playerId) {
-//         return res.status(400).json({ error: 'scouterId and playerId are required' });
+//       if (!scoutId || !playerId) {
+//         return res.status(400).json({ error: 'scoutId and playerId are required' });
 //       }
 
-//       // Verify scouter exists and has SCOUT role
-//       const scouter = await prisma.user.findUnique({ where: { id: parseInt(scouterId) } });
-//       if (!scouter || scouter.role !== 'SCOUT') {
+//       // Verify scout exists and has SCOUT role
+//       const scout = await prisma.user.findUnique({ where: { id: parseInt(scoutId) } });
+//       if (!scout || scout.role !== 'SCOUT') {
 //         return res.status(403).json({ error: 'Only scouts can file reports' });
 //       }
 
@@ -135,9 +135,9 @@ export default scouterReportController;
 //         return res.status(404).json({ error: 'Player not found' });
 //       }
 
-//       const newReport = await prisma.scouterReport.create({
+//       const newReport = await prisma.scoutReport.create({
 //         data: {
-//           scouterId: parseInt(scouterId),
+//           scoutId: parseInt(scoutId),
 //           playerId: parseInt(playerId),
 //           matchScouted,
 //           ageGroup,
@@ -161,7 +161,7 @@ export default scouterReportController;
 //           recommendation: recommendation ?? null,
 //         },
 //         include: {
-//           scouter: { select: { id: true, fullname: true, email: true } },
+//           scout: { select: { id: true, fullname: true, email: true } },
 //           player: {
 //             select: {
 //               id: true, fullname: true, email: true,
@@ -180,13 +180,13 @@ export default scouterReportController;
 //     }
 //   },
 
-//   // GET ALL ScouterReports (with optional filters)
+//   // GET ALL ScoutReports (with optional filters)
 //   async getAll(req, res) {
 //     try {
-//       const { scouterId, playerId, recommendation, page = 1, limit = 10 } = req.query;
+//       const { scoutId, playerId, recommendation, page = 1, limit = 10 } = req.query;
 
 //       const where = {};
-//       if (scouterId) where.scouterId = parseInt(scouterId);
+//       if (scoutId) where.scoutId = parseInt(scoutId);
 //       if (playerId) where.playerId = parseInt(playerId);
 //       if (recommendation) where.recommendation = recommendation; // e.g. RECOMMEND_FOR_TRIAL
 
@@ -194,13 +194,13 @@ export default scouterReportController;
 //       const take = parseInt(limit);
 
 //       const [reports, total] = await Promise.all([
-//         prisma.scouterReport.findMany({
+//         prisma.scoutReport.findMany({
 //           where,
 //           skip,
 //           take,
 //           orderBy: { createdAt: 'desc' },
 //           include: {
-//             scouter: { select: { id: true, fullname: true, email: true } },
+//             scout: { select: { id: true, fullname: true, email: true } },
 //             player: {
 //               select: {
 //                 id: true, fullname: true, email: true,
@@ -211,7 +211,7 @@ export default scouterReportController;
 //             },
 //           },
 //         }),
-//         prisma.scouterReport.count({ where }),
+//         prisma.scoutReport.count({ where }),
 //       ]);
 
 //       res.status(200).json({
@@ -229,7 +229,7 @@ export default scouterReportController;
 //     }
 //   },
 
-//   // GET a single ScouterReport by ID
+//   // GET a single ScoutReport by ID
 //   async getById(req, res) {
 //     try {
 //       const id = parseInt(req.params.id);
@@ -238,10 +238,10 @@ export default scouterReportController;
 //         return res.status(400).json({ error: 'Invalid report ID' });
 //       }
 
-//       const report = await prisma.scouterReport.findUnique({
+//       const report = await prisma.scoutReport.findUnique({
 //         where: { id },
 //         include: {
-//           scouter: { select: { id: true, fullname: true, email: true } },
+//           scout: { select: { id: true, fullname: true, email: true } },
 //           player: {
 //             select: {
 //               id: true, fullname: true, email: true,
@@ -264,7 +264,7 @@ export default scouterReportController;
 //     }
 //   },
 
-//   // UPDATE a ScouterReport
+//   // UPDATE a ScoutReport
 //   async update(req, res) {
 //     try {
 //       const id = parseInt(req.params.id);
@@ -273,14 +273,14 @@ export default scouterReportController;
 //         return res.status(400).json({ error: 'Invalid report ID' });
 //       }
 
-//       const existing = await prisma.scouterReport.findUnique({ where: { id } });
+//       const existing = await prisma.scoutReport.findUnique({ where: { id } });
 //       if (!existing) {
 //         return res.status(404).json({ error: 'Report not found' });
 //       }
 
-//       // Only allow the scouter who filed it to update it
-//       const requestingScouterId = parseInt(req.body.scouterId);
-//       if (existing.scouterId !== requestingScouterId) {
+//       // Only allow the scout who filed it to update it
+//       const requestingScoutId = parseInt(req.body.scoutId);
+//       if (existing.scoutId !== requestingScoutId) {
 //         return res.status(403).json({ error: 'You can only update your own reports' });
 //       }
 
@@ -296,7 +296,7 @@ export default scouterReportController;
 //         keyStrengths, areasForDevelopment, recommendation,
 //       } = req.body;
 
-//       const updatedReport = await prisma.scouterReport.update({
+//       const updatedReport = await prisma.scoutReport.update({
 //         where: { id },
 //         data: {
 //           matchScouted, ageGroup, currentClub, overallAssessment,
@@ -319,7 +319,7 @@ export default scouterReportController;
 //     }
 //   },
 
-//   // DELETE a ScouterReport
+//   // DELETE a ScoutReport
 //   async delete(req, res) {
 //     try {
 //       const id = parseInt(req.params.id);
@@ -328,12 +328,12 @@ export default scouterReportController;
 //         return res.status(400).json({ error: 'Invalid report ID' });
 //       }
 
-//       const existing = await prisma.scouterReport.findUnique({ where: { id } });
+//       const existing = await prisma.scoutReport.findUnique({ where: { id } });
 //       if (!existing) {
 //         return res.status(404).json({ error: 'Report not found' });
 //       }
 
-//       await prisma.scouterReport.delete({ where: { id } });
+//       await prisma.scoutReport.delete({ where: { id } });
 //       res.status(200).json({ message: 'Report deleted successfully' });
 //     } catch (error) {
 //       console.error(error);
@@ -342,7 +342,7 @@ export default scouterReportController;
 //   },
 // };
 
-// export default scouterReportController;
+// export default scoutReportController;
 
 
 
@@ -363,26 +363,26 @@ export default scouterReportController;
 // import prisma from '../lib/prisma.js';  // or '../config/prisma.js'
 // // const prisma = new PrismaClient();
 
-// const scouterReportController = {
-//   // CREATE a new ScouterReport
+// const scoutReportController = {
+//   // CREATE a new ScoutReport
 // async create(req, res) {
 //   try {
-//     const { scouterId, playerId, title, report } = req.body;
+//     const { scoutId, playerId, title, report } = req.body;
 
 //     // 👇 Guard: make sure both users exist
-//     if (!scouterId || !playerId || !report) {
-//       return res.status(400).json({ error: 'scouterId, playerId and report are required' });
+//     if (!scoutId || !playerId || !report) {
+//       return res.status(400).json({ error: 'scoutId, playerId and report are required' });
 //     }
 
-//     const newReport = await prisma.scouterReport.create({
+//     const newReport = await prisma.scoutReport.create({
 //       data: {
-//         scouterId: parseInt(scouterId),
+//         scoutId: parseInt(scoutId),
 //         playerId: parseInt(playerId),
 //         title,
 //         report,
 //       },
 //       include: {
-//         scouter: { select: { id: true, fullname: true, email: true } },
+//         scout: { select: { id: true, fullname: true, email: true } },
 //         player: { select: { id: true, fullname: true, email: true } },
 //       }
 //     });
@@ -394,30 +394,30 @@ export default scouterReportController;
 //   }
 // },
 
-// // GET ALL ScouterReports
+// // GET ALL ScoutReports
 // async getAll(req, res) {
 //   try {
-//     const { scouterId, playerId, page = 1, limit = 10 } = req.query;
+//     const { scoutId, playerId, page = 1, limit = 10 } = req.query;
 
 //     const where = {};
-//     if (scouterId) where.scouterId = parseInt(scouterId);
+//     if (scoutId) where.scoutId = parseInt(scoutId);
 //     if (playerId) where.playerId = parseInt(playerId);
 
 //     const skip = (parseInt(page) - 1) * parseInt(limit);
 //     const take = parseInt(limit);
 
 //     const [reports, total] = await Promise.all([
-//       prisma.scouterReport.findMany({
+//       prisma.scoutReport.findMany({
 //         where,
 //         skip,
 //         take,
 //         orderBy: { createdAt: 'desc' },
 //         include: {
-//           scouter: { select: { id: true, fullname: true, email: true } },
+//           scout: { select: { id: true, fullname: true, email: true } },
 //           player: { select: { id: true, fullname: true, email: true } },
 //         },
 //       }),
-//       prisma.scouterReport.count({ where }),
+//       prisma.scoutReport.count({ where }),
 //     ]);
 
 //     res.status(200).json({
@@ -435,7 +435,7 @@ export default scouterReportController;
 //   }
 // },
 
-// // GET a single ScouterReport by ID
+// // GET a single ScoutReport by ID
 // async getById(req, res) {
 //   try {
 //     const id = parseInt(req.params.id);
@@ -444,10 +444,10 @@ export default scouterReportController;
 //       return res.status(400).json({ error: 'Invalid report ID' });
 //     }
 
-//     const report = await prisma.scouterReport.findUnique({
+//     const report = await prisma.scoutReport.findUnique({
 //       where: { id },
 //       include: {
-//         scouter: { select: { id: true, fullname: true, email: true } },
+//         scout: { select: { id: true, fullname: true, email: true } },
 //         player: { select: { id: true, fullname: true, email: true } },
 //       },
 //     });
@@ -463,7 +463,7 @@ export default scouterReportController;
 //   }
 // },
 
-// // UPDATE a ScouterReport
+// // UPDATE a ScoutReport
 // async update(req, res) {
 //   try {
 //     const id = parseInt(req.params.id);
@@ -474,12 +474,12 @@ export default scouterReportController;
 //     }
 
 //     // 👇 Guard: check report exists before updating
-//     const existing = await prisma.scouterReport.findUnique({ where: { id } });
+//     const existing = await prisma.scoutReport.findUnique({ where: { id } });
 //     if (!existing) {
 //       return res.status(404).json({ error: 'Report not found' });
 //     }
 
-//     const updatedReport = await prisma.scouterReport.update({
+//     const updatedReport = await prisma.scoutReport.update({
 //       where: { id },
 //       data: { title, report },
 //     });
@@ -491,7 +491,7 @@ export default scouterReportController;
 //   }
 // },
 
-// // DELETE a ScouterReport
+// // DELETE a ScoutReport
 // async delete(req, res) {
 //   try {
 //     const id = parseInt(req.params.id);
@@ -501,12 +501,12 @@ export default scouterReportController;
 //     }
 
 //     // 👇 Guard: check report exists before deleting
-//     const existing = await prisma.scouterReport.findUnique({ where: { id } });
+//     const existing = await prisma.scoutReport.findUnique({ where: { id } });
 //     if (!existing) {
 //       return res.status(404).json({ error: 'Report not found' });
 //     }
 
-//     await prisma.scouterReport.delete({ where: { id } });
+//     await prisma.scoutReport.delete({ where: { id } });
 //     res.status(200).json({ message: 'Report deleted successfully' });
 //   } catch (error) {
 //     console.error(error);
@@ -515,4 +515,4 @@ export default scouterReportController;
 // }
 // };
 
-// export default scouterReportController;
+// export default scoutReportController;

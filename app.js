@@ -19,10 +19,10 @@ import paymentRouters from './src/routes/paymentRouters.js';
 // import playerReportRouters from './src/routes/playerReportRouters.js';
 import postRouters from './src/routes/postRouters.js';
 import profileRouters from './src/routes/profileRouters.js';
-import scouterProfileRouters from './src/routes/scouterProfileRouters.js'; // ✅ ensure casing matches file on disk
+import scoutProfileRouters from './src/routes/scoutProfileRouters.js/index.js'; // ✅ ensure casing matches file on disk
 import rankingRouters from './src/routes/rankingRouters.js';
 import ratingRouters from './src/routes/ratingRouters.js';
-import scouterReportRouters from './src/routes/scouterReportRouters.js';
+import scoutReportRouters from './src/routes/scoutReportRouters.js/index.js';
 import videoRouters from './src/routes/videoRouters.js';
 import videoViewRouters from './src/routes/videoViewRouters.js';
 import swaggerSpec from './src/config/swagger.js';
@@ -75,10 +75,10 @@ app.use(`${api}/payments`, paymentRouters);
 // app.use(`${api}/playerReports`, playerReportRouters);
 app.use(`${api}/posts`, postRouters);
 app.use(`${api}/profiles`, profileRouters);
-app.use(`${api}/scouterProfiles`, scouterProfileRouters);
+app.use(`${api}/scoutProfiles`, scoutProfileRouters);
 app.use(`${api}/rankings`, rankingRouters);
 app.use(`${api}/ratings`, ratingRouters);
-app.use(`${api}/scouterReports`, scouterReportRouters);
+app.use(`${api}/scoutReports`, scoutReportRouters);
 app.use(`${api}/videos`, videoRouters);
 app.use(`${api}/videoViews`, videoViewRouters);
 

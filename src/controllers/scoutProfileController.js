@@ -1,11 +1,11 @@
-import scouterProfileService from '../services/scouterProfileService.js';
+import scoutProfileService from '../services/scoutProfileService.js';
 
-const ScouterProfileController = {
+const ScoutProfileController = {
 
   // ✅ Public - anyone can view all scout profiles
   async getScoutProfiles(req, res) {
     try {
-      const result = await scouterProfileService.getAll(req.query);
+      const result = await scoutProfileService.getAll(req.query);
       res.status(200).json(result);
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to fetch scout profiles' });
@@ -18,7 +18,7 @@ const ScouterProfileController = {
       const userId = parseInt(req.params.id);
       if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
 
-      const profile = await scouterProfileService.getById(userId); // ✅ userId
+      const profile = await scoutProfileService.getById(userId); // ✅ userId
       res.status(200).json({ data: profile });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to fetch scout profile' });
@@ -30,7 +30,7 @@ const ScouterProfileController = {
     try {
       const userId = req.user.userId; // ✅ from JWT, not route param
 
-      const profile = await scouterProfileService.update(userId, req.body);
+      const profile = await scoutProfileService.update(userId, req.body);
       res.status(200).json({ message: 'Scout profile updated successfully', data: profile });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to update scout profile' });
@@ -42,7 +42,7 @@ const ScouterProfileController = {
     try {
       const userId = req.user.userId; // ✅ from JWT, not route param
 
-      await scouterProfileService.delete(userId);
+      await scoutProfileService.delete(userId);
       res.status(200).json({ message: 'Scout profile deleted successfully' });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to delete scout profile' });
@@ -54,7 +54,7 @@ const ScouterProfileController = {
     try {
       const userId = req.user.userId; // ✅ from JWT
 
-      const avatarUrl = await scouterProfileService.uploadAvatar(userId, req.file);
+      const avatarUrl = await scoutProfileService.uploadAvatar(userId, req.file);
       res.status(200).json({ message: 'Avatar uploaded successfully', avatarUrl });
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
@@ -62,7 +62,7 @@ const ScouterProfileController = {
   },
 };
 
-export default ScouterProfileController;
+export default ScoutProfileController;
 
 
 
@@ -78,15 +78,15 @@ export default ScouterProfileController;
 
 
 
-// import scouterProfileService from '../services/scouterProfileService.js';
+// import scoutProfileService from '../services/scoutProfileService.js';
 
-// const ScouterProfileController = {
+// const ScoutProfileController = {
 
 
 
 //   async getScoutProfiles(req, res) {
 //     try {
-//       const result = await scouterProfileService.getAll(req.query);
+//       const result = await scoutProfileService.getAll(req.query);
 //       res.status(200).json(result);
 //     } catch (err) {
 //       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to fetch scout profiles' });
@@ -98,7 +98,7 @@ export default ScouterProfileController;
 //       const id = parseInt(req.params.id);
 //       if (isNaN(id)) return res.status(400).json({ error: 'Invalid profile ID' });
 
-//       const profile = await scouterProfileService.getById(id);
+//       const profile = await scoutProfileService.getById(id);
 //       res.status(200).json({ data: profile });
 //     } catch (err) {
 //       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to fetch scout profile' });
@@ -110,7 +110,7 @@ export default ScouterProfileController;
 //       const id = parseInt(req.params.id);
 //       if (isNaN(id)) return res.status(400).json({ error: 'Invalid profile ID' });
 
-//       const profile = await scouterProfileService.update(id, req.body);
+//       const profile = await scoutProfileService.update(id, req.body);
 //       res.status(200).json({ message: 'Scout profile updated successfully', data: profile });
 //     } catch (err) {
 //       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to update scout profile' });
@@ -122,7 +122,7 @@ export default ScouterProfileController;
 //       const id = parseInt(req.params.id);
 //       if (isNaN(id)) return res.status(400).json({ error: 'Invalid profile ID' });
 
-//       await scouterProfileService.delete(id);
+//       await scoutProfileService.delete(id);
 //       res.status(200).json({ message: 'Scout profile deleted successfully' });
 //     } catch (err) {
 //       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to delete scout profile' });
@@ -132,7 +132,7 @@ export default ScouterProfileController;
 //   async uploadAvatar(req, res) {
 //     try {
 //       // ✅ Fixed: was req.user?.id — auth middleware sets req.user.userId
-//       const avatarUrl = await scouterProfileService.uploadAvatar(req.user.userId, req.file);
+//       const avatarUrl = await scoutProfileService.uploadAvatar(req.user.userId, req.file);
 //       res.status(200).json({ message: 'Avatar uploaded successfully', avatarUrl });
 //     } catch (err) {
 //       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
@@ -140,7 +140,7 @@ export default ScouterProfileController;
 //   },
 // };
 
-// export default ScouterProfileController;
+// export default ScoutProfileController;
 
 
 
@@ -161,7 +161,7 @@ export default ScouterProfileController;
 // // import prisma from '../lib/prisma.js';
 // // import { uploadMediaToGCS } from '../config/multer.js';
 
-// // const ScouterProfileController = {
+// // const ScoutProfileController = {
 
 // //   // =========================
 // //   // CREATE PROFILE
@@ -417,4 +417,4 @@ export default ScouterProfileController;
 
 // // };
 
-// // export default ScouterProfileController;
+// // export default ScoutProfileController;
