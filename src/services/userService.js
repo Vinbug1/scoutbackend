@@ -17,33 +17,53 @@ const userService = {
     if (!email || !password || !fullname) {
       throw { status: 400, message: 'Email, password, and fullname are required' };
     }
-
+  
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       throw { status: 400, message: 'Invalid email format' };
     }
-
+  
     if (password.length < 6) {
       throw { status: 400, message: 'Password must be at least 6 characters long' };
     }
-
+  
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) throw { status: 400, message: 'Email already in use' };
-
+  
     const roleUpper = role?.toUpperCase() || 'PLAYER';
     if (!VALID_ROLES.includes(roleUpper)) {
       throw { status: 400, message: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` };
     }
-
+  
     const hashedPassword = await bcrypt.hash(password, 10);
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-
+  
+    // ✅ Only change is here
     const user = await prisma.user.create({
-      data: { email, password: hashedPassword, fullname, role: roleUpper, otp, otpExpiry, isVerified: false },
-      select: { id: true, email: true, fullname: true, role: true, createdAt: true },
+      data: {
+        email,
+        password: hashedPassword,
+        fullname,
+        role: roleUpper,
+        otp,
+        otpExpiry,
+        isVerified: false,
+  
+        ...(roleUpper === 'PLAYER' && { profile: { create: {} } }),
+        ...(roleUpper === 'SCOUT' && { scoutProfile: { create: {} } }),
+      },
+      select: {
+        id: true,
+        email: true,
+        fullname: true,
+        role: true,
+        createdAt: true,
+        profile: true,
+        scoutProfile: true,
+      },
     });
-
+  
     await sendEmail({
       to: email,
       subject: 'Verify Your Account',
@@ -56,16 +76,15 @@ const userService = {
         </div>
       `,
     });
-
+  
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
-
+  
     return { user, token };
   },
-
   async login({ email, password }) {
     if (!email || !password) {
       throw { status: 400, message: 'Email and password are required' };

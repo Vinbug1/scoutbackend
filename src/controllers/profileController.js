@@ -2,14 +2,7 @@ import profileService from '../services/profileService.js';
 
 const ProfileController = {
 
-  async createProfile(req, res) {
-    try {
-      const profile = await profileService.create(req.body);
-      res.status(201).json({ message: 'Profile created successfully', data: profile });
-    } catch (err) {
-      res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to create profile' });
-    }
-  },
+  
 
   async getProfiles(req, res) {
     try {

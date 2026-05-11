@@ -3,34 +3,6 @@ import { uploadMediaToGCS } from '../config/multer.js';
 
 const scouterProfileService = {
 
-  // =========================
-  // CREATE
-  // =========================
-  async create({ userId, club, country, city, address, bio }) {
-    if (!userId) throw { status: 400, message: 'userId is required' };
-
-    const userExists = await prisma.user.findUnique({ where: { id: parseInt(userId) } });
-    if (!userExists) throw { status: 404, message: 'User not found' };
-
-    // ✅ Only scouts should have a scout profile
-    if (userExists.role !== 'SCOUT') {
-      throw { status: 403, message: 'Only scouts can create a scout profile' };
-    }
-
-    const alreadyExists = await prisma.scoutProfile.findUnique({ where: { userId: parseInt(userId) } });
-    if (alreadyExists) throw { status: 400, message: 'Scout profile already exists for this user' };
-
-    return prisma.scoutProfile.create({
-      data: {
-        userId: parseInt(userId),
-        club,
-        country,
-        city,
-        address,
-        bio,
-      },
-    });
-  },
 
   // =========================
   // GET ALL

@@ -114,35 +114,6 @@ const upload = multer({ storage: multer.memoryStorage() });
 // ⚠️ Must be declared BEFORE /:id to prevent Express matching "avatar" as an id param
 router.post('/avatar', authenticate, upload.single('avatar'), scouterProfileController.uploadAvatar);
 
-/**
- * @swagger
- * /api/scoutProfiles:
- *   post:
- *     summary: Create a new scout profile
- *     tags: [ScoutProfiles]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/ScouterProfileInput'
- *     responses:
- *       201:
- *         description: Scout profile created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ScouterProfile'
- *       400:
- *         description: Missing userId or profile already exists
- *       403:
- *         description: User is not a scout
- *       404:
- *         description: User not found
- *       500:
- *         description: Server error
- */
-router.post('/', scouterProfileController.createScoutProfile);
 
 /**
  * @swagger
