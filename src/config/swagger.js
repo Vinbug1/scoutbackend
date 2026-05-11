@@ -18,12 +18,12 @@ console.log("🌍 Swagger base URL:", `${baseUrl}/api`);
 const swaggerDefinition = {
   openapi: "3.0.0",
   info: {
-    title: "Scouter API Documentation",
+    title: "Scout API Documentation",
     version: "1.0.0",
-    description: "API documentation for Scouter backend system",
+    description: "API documentation for Scout backend system",
     contact: {
-      name: "Scouter Team",
-      email: "info@scouter.com"
+      name: "Scout Team",
+      email: "info@scout.com"
     }
   },
   servers: [
