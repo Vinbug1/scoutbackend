@@ -87,21 +87,65 @@ const scoutProfileService = {
   // =========================
   // UPLOAD AVATAR
   // =========================
+
   async uploadAvatar(userId, file) {
-    if (!file) throw { status: 400, message: 'No image file provided' };
-
-    const existing = await prisma.scoutProfile.findUnique({ where: { userId } });
-    if (!existing) throw { status: 404, message: 'Scout profile not found' };
-
-    const uploaded = await uploadMediaToGCS(file, 'avatars');
-
-    const profile = await prisma.scoutProfile.update({
+    if (!file) {
+      throw { status: 400, message: "No image file provided" };
+    }
+  
+    // avatars must be images only
+    if (!file.mimetype?.startsWith("image/")) {
+      throw { status: 400, message: "Avatar must be an image" };
+    }
+  
+    // check profile exists
+    const existing = await prisma.scoutProfile.findUnique({
+      where: { userId },
+    });
+  
+    if (!existing) {
+      throw { status: 404, message: "Scout profile not found" };
+    }
+  
+    // 🔹 upload new avatar to GCS
+    const uploaded = await uploadMediaToGCS(file, "avatars");
+  
+    // 🔹 delete old avatar from GCS (avoid storage leaks)
+    if (existing.avatarUrl) {
+      try {
+        const oldPath = existing.avatarUrl.split(".com/")[1];
+        if (oldPath) {
+          await bucket.file(oldPath).delete().catch(() => {});
+        }
+      } catch (_) {}
+    }
+  
+    // 🔹 update DB
+    const updated = await prisma.scoutProfile.update({
       where: { userId },
       data: { avatarUrl: uploaded.url },
     });
+  
+    return {
+      message: "Avatar uploaded successfully",
+      avatarUrl: updated.avatarUrl,
+    };
+  }
+  // async uploadAvatar(userId, file) {
+  //   if (!file) throw { status: 400, message: 'No image file provided' };
 
-    return profile.avatarUrl;
-  },
+  //   const existing = await prisma.scoutProfile.findUnique({ where: { userId } });
+  //   if (!existing) throw { status: 404, message: 'Scout profile not found' };
+
+  //   const uploaded = await uploadMediaToGCS(file, 'avatars');
+
+  //   const profile = await prisma.scoutProfile.update({
+  //     where: { userId },
+  //     data: { avatarUrl: uploaded.url },
+  //   });
+
+  //   return profile.avatarUrl;
+  // },
 };
 
 export default scoutProfileService;
