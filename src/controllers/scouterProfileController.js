@@ -2,14 +2,7 @@ import scouterProfileService from '../services/scouterProfileService.js';
 
 const ScouterProfileController = {
 
-  async createScoutProfile(req, res) {
-    try {
-      const profile = await scouterProfileService.create(req.body);
-      res.status(201).json({ message: 'Scout profile created successfully', data: profile });
-    } catch (err) {
-      res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to create scout profile' });
-    }
-  },
+
 
   async getScoutProfiles(req, res) {
     try {
