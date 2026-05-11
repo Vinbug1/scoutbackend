@@ -127,7 +127,7 @@ export const getVideosByUser = async (playerId) => {
  *  - profile (avatarUrl, position, country, …)
  *  - videos[] each with comments, ratings, counts
  *
- * @param {number} userId   - from req.user.id (JWT payload)
+ * @param {number} userId   - from req.user.userId (JWT payload)
  * @returns {Promise<object>}
  */
 export const getMyProfileWithVideos = async (userId) => {
