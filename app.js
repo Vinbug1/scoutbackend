@@ -19,10 +19,10 @@ import paymentRouters from './src/routes/paymentRouters.js';
 // import playerReportRouters from './src/routes/playerReportRouters.js';
 import postRouters from './src/routes/postRouters.js';
 import profileRouters from './src/routes/profileRouters.js';
-import scoutProfileRouters from './src/routes/scoutProfileRouters.js/index.js'; // ✅ ensure casing matches file on disk
+import scoutProfileRouters from './src/routes/scoutProfileRouters.js'; // ✅ ensure casing matches file on disk
 import rankingRouters from './src/routes/rankingRouters.js';
 import ratingRouters from './src/routes/ratingRouters.js';
-import scoutReportRouters from './src/routes/scoutReportRouters.js/index.js';
+import scoutReportRouters from './src/routes/scoutReportRouters.js';
 import videoRouters from './src/routes/videoRouters.js';
 import videoViewRouters from './src/routes/videoViewRouters.js';
 import swaggerSpec from './src/config/swagger.js';
