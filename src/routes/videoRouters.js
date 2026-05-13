@@ -69,7 +69,7 @@ const router = Router();
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.post('/videos/upload',protect, upload.single('video'),handleVideoUpload);
+router.post('/upload',protect, upload.single('video'),handleVideoUpload);
 
 // ─────────────────────────────────────────────────────────────────────────────
 
