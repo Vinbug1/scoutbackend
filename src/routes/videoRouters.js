@@ -34,6 +34,7 @@ const router = Router();
  *             required:
  *               - video
  *               - title
+ *               - playerId
  *             properties:
  *               video:
  *                 type: string
@@ -41,27 +42,65 @@ const router = Router();
  *                 description: Video file (MP4 / MOV / AVI / WEBM). Max 500 MB.
  *               title:
  *                 type: string
- *                 example: Skill showcase – March 2025
+ *                 example: Player Highlight
  *               description:
  *                 type: string
- *                 example: Highlights from the Lagos regional trials.
+ *                 example: Scouted at Lagos trials
  *               published:
  *                 type: string
  *                 enum: ['true', 'false']
  *                 default: 'false'
  *                 description: Pass "true" to publish immediately.
+ *               playerId:
+ *                 type: integer
+ *                 description: ID of the player this video belongs to.
+ *                 example: 7
  *     responses:
  *       201:
  *         description: Video uploaded and converted to HLS successfully.
  *         content:
  *           application/json:
  *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/SuccessEnvelope'
- *                 - type: object
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Video uploaded and converted to HLS successfully.
+ *                 data:
+ *                   type: object
  *                   properties:
- *                     data:
- *                       $ref: '#/components/schemas/Video'
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     videoUrl:
+ *                       type: string
+ *                       example: https://storage.googleapis.com/scouter_bucket/videos_7_2e395363-2f16-4cfe-9a98-ff4d99acd0aa/index.m3u8
+ *                     thumbnailUrl:
+ *                       type: string
+ *                       nullable: true
+ *                       example: null
+ *                     title:
+ *                       type: string
+ *                       example: Player Highlight
+ *                     description:
+ *                       type: string
+ *                       example: Scouted at Lagos trials
+ *                     published:
+ *                       type: boolean
+ *                       example: false
+ *                     durationSec:
+ *                       type: integer
+ *                       example: 19
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: 2026-05-13T10:19:59.801Z
+ *                     playerId:
+ *                       type: integer
+ *                       example: 7
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       401:
@@ -69,8 +108,7 @@ const router = Router();
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.post('/upload',protect, upload.single('video'),handleVideoUpload);
-
+router.post('/upload', protect, upload.single('video'), handleVideoUpload);
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
