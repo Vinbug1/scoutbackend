@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { upload } from '../config/multer.js';
+import { upload,uploadVideoWithThumbnail  } from '../config/multer.js';
 import { handleVideoUpload, handleAvatarUpload, handleGetUserVideos, handleGetMyProfile, handleGetVideo } from '../controllers/videoController.js';
 import { verifyToken as protect} from '../middleware/auth.js';
 // import { protect, optionalAuth } from './middlewares/auth.js';
@@ -7,6 +7,112 @@ import { verifyToken as protect} from '../middleware/auth.js';
 const router = Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /videos/upload:
+ *   post:
+ *     summary: Upload a video
+ *     description: |
+ *       Accepts any common video format (MP4, MOV, AVI, WEBM).
+ *       If the file is **not already HLS**, the server automatically converts it
+ *       to an HLS stream (`.m3u8` + `.ts` segments) using FFmpeg before storing
+ *       it on Google Cloud Storage.
+ *
+ *       The returned `videoUrl` is the public `.m3u8` playlist URL — use any
+ *       HLS-compatible player (hls.js, Video.js, native Safari) to stream it.
+ *     tags:
+ *       - Videos
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video
+ *               - title
+ *             properties:
+ *               video:
+ *                 type: string
+ *                 format: binary
+ *                 description: Video file (MP4 / MOV / AVI / WEBM). Max 500 MB.
+ *               thumbnail:
+ *                 type: string
+ *                 format: binary
+ *                 description: Optional thumbnail image (JPEG / PNG). Auto-compressed to 1024px.
+ *               title:
+ *                 type: string
+ *                 example: Player Highlight
+ *               description:
+ *                 type: string
+ *                 example: Scouted at Lagos trials
+ *               published:
+ *                 type: string
+ *                 enum: ['true', 'false']
+ *                 default: 'false'
+ *                 description: Pass "true" to publish immediately.
+ *               playerId:
+ *                 type: integer
+ *                 description: Required only for SCOUT uploads.
+ *                 example: 7
+ *     responses:
+ *       201:
+ *         description: Video uploaded and converted to HLS successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Video uploaded and converted to HLS successfully.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     videoUrl:
+ *                       type: string
+ *                       example: https://storage.googleapis.com/scouter_bucket/videos_7_.../index.m3u8
+ *                     thumbnailUrl:
+ *                       type: string
+ *                       nullable: true
+ *                       example: https://storage.googleapis.com/scouter_bucket/thumbnails_7_.../image.jpg
+ *                     title:
+ *                       type: string
+ *                       example: Player Highlight
+ *                     description:
+ *                       type: string
+ *                       example: Scouted at Lagos trials
+ *                     published:
+ *                       type: boolean
+ *                       example: false
+ *                     durationSec:
+ *                       type: integer
+ *                       example: 19
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: 2026-05-13T10:19:59.801Z
+ *                     playerId:
+ *                       type: integer
+ *                       example: 7
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+router.post('/upload', protect, uploadVideoWithThumbnail, handleVideoUpload);
+//                                ↑ replaces upload.single('video')
 
 /**
  * @swagger
@@ -108,7 +214,7 @@ const router = Router();
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.post('/upload', protect, upload.single('video'), handleVideoUpload);
+//router.post('/upload', protect, upload.single('video'), handleVideoUpload);
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
