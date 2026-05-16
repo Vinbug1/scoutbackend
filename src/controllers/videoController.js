@@ -15,8 +15,7 @@ import {
 
 export const handleVideoUpload = async (req, res) => {
   try {
-    const multerFile    = req.files?.video?.[0];        // ← was req.file
-    const thumbnailFile = req.files?.thumbnail?.[0];    // ← new
+    const multerFile = req.file;  // ← back to req.file (single upload)
 
     if (!multerFile) {
       return res.status(400).json({ success: false, message: 'No video file provided.' });
@@ -53,7 +52,6 @@ export const handleVideoUpload = async (req, res) => {
 
     const video = await uploadVideo(
       multerFile,
-      thumbnailFile,                                     // ← new
       { title: title.trim(), description, published: published === 'true' },
       playerId,
     );
