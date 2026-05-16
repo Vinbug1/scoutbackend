@@ -37,6 +37,16 @@ export const upload = multer({
   },
 });
 
+
+// ========================
+// 🔹 Named Field Uploads
+// ========================
+export const uploadVideoWithThumbnail = upload.fields([
+  { name: 'video',     maxCount: 1 },  // required — must be a video
+  { name: 'thumbnail', maxCount: 1 },  // optional — must be JPEG/PNG
+]);
+
+
 // ========================
 // 🔹 Helpers
 // ========================
@@ -170,6 +180,7 @@ const uploadBufferToGCS = (buffer, blobPath, contentType) =>
 // ========================
 // 🔹 Main Upload Dispatcher
 // ========================
+
 export const uploadMediaToGCS = async (input, directory = 'uploads') => {
   const startTime = Date.now();
   let mimeType;
@@ -215,11 +226,12 @@ export const uploadMediaToGCS = async (input, directory = 'uploads') => {
   }
 
   if (isVideo) {
-    const { playlistUrl, fileName, durationSec } =
+    const { playlistUrl, mp4Url, fileName, durationSec } =  // ← add mp4Url
       await convertAndUploadHLS(buffer, mimeType, directory);
 
     return {
       url:          playlistUrl,
+      mp4Url,                                               // ← expose it
       fileName,
       mediaType:    'video',
       sizeKB:       Number((buffer.length / 1024).toFixed(2)),
@@ -229,6 +241,166 @@ export const uploadMediaToGCS = async (input, directory = 'uploads') => {
   }
 
   throw new Error(`Unsupported media type: ${mimeType}`);
+};
+// export const uploadMediaToGCS = async (input, directory = 'uploads') => {
+//   const startTime = Date.now();
+//   let mimeType;
+//   let buffer;
+
+//   if (typeof input === 'string') {
+//     const matches = input.match(/^data:(.+);base64,(.+)$/);
+//     if (!matches) throw new Error('Invalid Base64 format');
+//     mimeType = matches[1];
+//     buffer   = Buffer.from(matches[2], 'base64');
+//   } else if (input?.buffer && input?.mimetype) {
+//     mimeType = input.mimetype;
+//     buffer   = input.buffer;
+//   } else {
+//     throw new Error('Unsupported input: pass a base64 string or a Multer file object.');
+//   }
+
+//   const detected = await fileTypeFromBuffer(buffer);
+//   if (detected?.mime) mimeType = detected.mime;
+
+//   const isImage = mimeType.startsWith('image/');
+//   const isVideo = mimeType.startsWith('video/') || mimeType === 'application/x-mpegurl';
+
+//   if (isImage) {
+//     if (!['image/jpeg', 'image/png'].includes(mimeType)) {
+//       throw new Error('Only JPEG and PNG images are accepted.');
+//     }
+
+//     const { buffer: finalBuf, mimeType: finalMime, extension } =
+//       await compressImage(buffer, mimeType);
+
+//     const fileName = sanitizeFileName(`${directory}/${uuidv4()}.${extension}`);
+//     await uploadBufferToGCS(finalBuf, fileName, finalMime);
+
+//     return {
+//       url:          `https://storage.googleapis.com/${bucket.name}/${fileName}`,
+//       fileName,
+//       mediaType:    'image',
+//       sizeKB:       Number((finalBuf.length / 1024).toFixed(2)),
+//       uploadTimeMS: Date.now() - startTime,
+//       durationSec:  null,
+//     };
+//   }
+
+//   if (isVideo) {
+//     const { playlistUrl, fileName, durationSec } =
+//       await convertAndUploadHLS(buffer, mimeType, directory);
+
+//     return {
+//       url:          playlistUrl,
+//       fileName,
+//       mediaType:    'video',
+//       sizeKB:       Number((buffer.length / 1024).toFixed(2)),
+//       uploadTimeMS: Date.now() - startTime,
+//       durationSec,
+//     };
+//   }
+
+//   throw new Error(`Unsupported media type: ${mimeType}`);
+// };
+
+
+const convertAndUploadHLS = async (buffer, mimeType, directory) => {
+  const sessionId  = uuidv4();
+  const tmpDir     = path.join(os.tmpdir(), `hls_${sessionId}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  const inputExt   = mimeType === 'application/x-mpegurl' ? '.m3u8' : '.mp4';
+  const inputPath  = bufferToTempFile(buffer, inputExt);
+  const outputM3u8 = path.join(tmpDir, 'index.m3u8');
+  const outputMp4  = path.join(tmpDir, 'output.mp4');   // ← new
+
+  try {
+    if (mimeType === 'application/x-mpegurl' || inputExt === '.m3u8') {
+      const gcsPrefix  = sanitizeFileName(`${directory}/${sessionId}`);
+      const blobName   = `${gcsPrefix}/index.m3u8`;
+      await uploadBufferToGCS(buffer, blobName, 'application/x-mpegurl');
+      return {
+        playlistUrl: `https://storage.googleapis.com/${bucket.name}/${blobName}`,
+        mp4Url:      null,   // ← already HLS, no MP4 source
+        fileName:    blobName,
+        durationSec: null,
+      };
+    }
+
+    let probedDuration = null;
+
+    // Run HLS + MP4 conversion in a single FFmpeg pass
+    await new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        // ── HLS output ──────────────────────────────────────
+        .output(outputM3u8)
+        .outputOptions([
+          '-codec:v libx264',
+          '-codec:a aac',
+          '-b:v 1500k',
+          '-b:a 128k',
+          '-vf scale=-2:720',
+          '-hls_time 6',
+          '-hls_playlist_type vod',
+          '-hls_segment_filename', path.join(tmpDir, 'seg%04d.ts'),
+          '-start_number 0',
+        ])
+        // ── MP4 output ──────────────────────────────────────
+        .output(outputMp4)
+        .outputOptions([
+          '-codec:v libx264',
+          '-codec:a aac',
+          '-b:v 1500k',
+          '-b:a 128k',
+          '-vf scale=-2:720',
+          '-movflags faststart',   // ← enables streaming/progressive play
+        ])
+        .on('codecData', (data) => {
+          const match = data.duration?.match(/(\d+):(\d+):(\d+)/);
+          if (match) {
+            probedDuration =
+              parseInt(match[1]) * 3600 +
+              parseInt(match[2]) * 60  +
+              parseInt(match[3]);
+          }
+        })
+        .on('end', resolve)
+        .on('error', (err) => reject(new Error(`FFmpeg error: ${err.message}`)))
+        .run();
+    });
+
+    const gcsPrefix = sanitizeFileName(`${directory}/${sessionId}`);
+
+    // Upload HLS segments + MP4 in parallel
+    const hlsFiles = fs.readdirSync(tmpDir).filter(f => f !== 'output.mp4');
+    const mp4Buffer = fs.readFileSync(outputMp4);
+
+    await Promise.all([
+      // HLS files
+      ...hlsFiles.map((file) => {
+        const filePath    = path.join(tmpDir, file);
+        const fileBuffer  = fs.readFileSync(filePath);
+        const gcsPath     = `${gcsPrefix}/${file}`;
+        const contentType = file.endsWith('.m3u8')
+          ? 'application/x-mpegurl'
+          : 'video/MP2T';
+        return uploadBufferToGCS(fileBuffer, gcsPath, contentType);
+      }),
+      // MP4
+      uploadBufferToGCS(mp4Buffer, `${gcsPrefix}/output.mp4`, 'video/mp4'),
+    ]);
+
+    return {
+      playlistUrl: `https://storage.googleapis.com/${bucket.name}/${gcsPrefix}/index.m3u8`,
+      mp4Url:      `https://storage.googleapis.com/${bucket.name}/${gcsPrefix}/output.mp4`,
+      fileName:    `${gcsPrefix}/index.m3u8`,
+      durationSec: probedDuration,
+    };
+
+  } finally {
+    cleanupFile(inputPath);
+    cleanupDir(tmpDir);
+  }
 };
 
 // ========================

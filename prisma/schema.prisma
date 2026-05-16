@@ -167,6 +167,7 @@ model ScoutProfile {
 model Video {
   id           Int      @id @default(autoincrement())
   videoUrl     String
+  mp4Url       String?  // MP4 — for in-app native playback  ← add this
   thumbnailUrl String?
   title        String
   description  String?
