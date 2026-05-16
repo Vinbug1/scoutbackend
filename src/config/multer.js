@@ -94,16 +94,18 @@ const convertAndUploadHLS = async (buffer, mimeType, directory) => {
   const inputExt   = mimeType === 'application/x-mpegurl' ? '.m3u8' : '.mp4';
   const inputPath  = bufferToTempFile(buffer, inputExt);
   const outputM3u8 = path.join(tmpDir, 'index.m3u8');
-  const outputMp4  = path.join(tmpDir, 'output.mp4');   // ← new
+  const outputMp4  = path.join(tmpDir, 'output.mp4');
+  const outputThumb = path.join(tmpDir, 'thumbnail.jpg');  // ← new
 
   try {
     if (mimeType === 'application/x-mpegurl' || inputExt === '.m3u8') {
-      const gcsPrefix  = sanitizeFileName(`${directory}/${sessionId}`);
-      const blobName   = `${gcsPrefix}/index.m3u8`;
+      const gcsPrefix = sanitizeFileName(`${directory}/${sessionId}`);
+      const blobName  = `${gcsPrefix}/index.m3u8`;
       await uploadBufferToGCS(buffer, blobName, 'application/x-mpegurl');
       return {
         playlistUrl: `https://storage.googleapis.com/${bucket.name}/${blobName}`,
-        mp4Url:      null,   // ← already HLS, no MP4 source
+        mp4Url:      null,
+        thumbnailUrl: null,
         fileName:    blobName,
         durationSec: null,
       };
@@ -111,10 +113,9 @@ const convertAndUploadHLS = async (buffer, mimeType, directory) => {
 
     let probedDuration = null;
 
-    // Run HLS + MP4 conversion in a single FFmpeg pass
+    // ── Step 1: Convert to HLS + MP4 ──────────────────────────────────────
     await new Promise((resolve, reject) => {
       ffmpeg(inputPath)
-        // ── HLS output ──────────────────────────────────────
         .output(outputM3u8)
         .outputOptions([
           '-codec:v libx264',
@@ -127,7 +128,6 @@ const convertAndUploadHLS = async (buffer, mimeType, directory) => {
           '-hls_segment_filename', path.join(tmpDir, 'seg%04d.ts'),
           '-start_number 0',
         ])
-        // ── MP4 output ──────────────────────────────────────
         .output(outputMp4)
         .outputOptions([
           '-codec:v libx264',
@@ -135,7 +135,7 @@ const convertAndUploadHLS = async (buffer, mimeType, directory) => {
           '-b:v 1500k',
           '-b:a 128k',
           '-vf scale=-2:720',
-          '-movflags faststart',   // ← enables streaming/progressive play
+          '-movflags faststart',
         ])
         .on('codecData', (data) => {
           const match = data.duration?.match(/(\d+):(\d+):(\d+)/);
@@ -151,14 +151,41 @@ const convertAndUploadHLS = async (buffer, mimeType, directory) => {
         .run();
     });
 
-    const gcsPrefix = sanitizeFileName(`${directory}/${sessionId}`);
+    // ── Step 2: Extract thumbnail frame at 1 second ────────────────────────
+    await new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .screenshots({
+          timestamps: ['00:00:01'],       // grab frame at 1 second
+          filename:   'thumbnail.jpg',
+          folder:     tmpDir,
+          size:       '1024x?',           // 1024px wide, height auto
+        })
+        .on('end', resolve)
+        .on('error', () => {
+          // If video is shorter than 1s, fallback to first frame
+          ffmpeg(inputPath)
+            .screenshots({
+              timestamps: ['00:00:00'],
+              filename:   'thumbnail.jpg',
+              folder:     tmpDir,
+              size:       '1024x?',
+            })
+            .on('end', resolve)
+            .on('error', reject)
+        });
+    });
 
-    // Upload HLS segments + MP4 in parallel
-    const hlsFiles = fs.readdirSync(tmpDir).filter(f => f !== 'output.mp4');
-    const mp4Buffer = fs.readFileSync(outputMp4);
+    // ── Step 3: Compress thumbnail with sharp ──────────────────────────────
+    const rawThumb      = fs.readFileSync(outputThumb);
+    const { buffer: compressedThumb } = await compressImage(rawThumb, 'image/jpeg');
+
+    // ── Step 4: Upload everything to GCS ──────────────────────────────────
+    const gcsPrefix  = sanitizeFileName(`${directory}/${sessionId}`);
+    const hlsFiles   = fs.readdirSync(tmpDir).filter(f => f !== 'output.mp4' && f !== 'thumbnail.jpg');
+    const mp4Buffer  = fs.readFileSync(outputMp4);
 
     await Promise.all([
-      // HLS files
+      // HLS segments
       ...hlsFiles.map((file) => {
         const filePath    = path.join(tmpDir, file);
         const fileBuffer  = fs.readFileSync(filePath);
@@ -170,13 +197,16 @@ const convertAndUploadHLS = async (buffer, mimeType, directory) => {
       }),
       // MP4
       uploadBufferToGCS(mp4Buffer, `${gcsPrefix}/output.mp4`, 'video/mp4'),
+      // Thumbnail
+      uploadBufferToGCS(compressedThumb, `${gcsPrefix}/thumbnail.jpg`, 'image/jpeg'),
     ]);
 
     return {
-      playlistUrl: `https://storage.googleapis.com/${bucket.name}/${gcsPrefix}/index.m3u8`,
-      mp4Url:      `https://storage.googleapis.com/${bucket.name}/${gcsPrefix}/output.mp4`,
-      fileName:    `${gcsPrefix}/index.m3u8`,
-      durationSec: probedDuration,
+      playlistUrl:  `https://storage.googleapis.com/${bucket.name}/${gcsPrefix}/index.m3u8`,
+      mp4Url:       `https://storage.googleapis.com/${bucket.name}/${gcsPrefix}/output.mp4`,
+      thumbnailUrl: `https://storage.googleapis.com/${bucket.name}/${gcsPrefix}/thumbnail.jpg`,  // ← new
+      fileName:     `${gcsPrefix}/index.m3u8`,
+      durationSec:  probedDuration,
     };
 
   } finally {
@@ -326,12 +356,13 @@ export const uploadMediaToGCS = async (input, directory = 'uploads') => {
   }
 
   if (isVideo) {
-    const { playlistUrl, mp4Url, fileName, durationSec } =  // ← add mp4Url
+    const { playlistUrl, mp4Url, thumbnailUrl, fileName, durationSec } =  // ← add thumbnailUrl
       await convertAndUploadHLS(buffer, mimeType, directory);
-
+  
     return {
       url:          playlistUrl,
-      mp4Url,                                               // ← expose it
+      mp4Url,
+      thumbnailUrl,                                                         // ← expose it
       fileName,
       mediaType:    'video',
       sizeKB:       Number((buffer.length / 1024).toFixed(2)),
