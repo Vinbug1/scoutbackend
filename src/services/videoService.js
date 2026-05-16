@@ -51,8 +51,8 @@ const avgRating = (ratings) =>
  * @param {number} playerId     - resolved player id (from JWT or body)
  * @returns {Promise<Video>}
  */
-export const uploadVideo = async (multerFile, meta, playerId) => {
-  // ── Verify the playerId belongs to a real PLAYER ──────────────────────────
+
+export const uploadVideo = async (multerFile, thumbnailFile, meta, playerId) => {
   const player = await prisma.user.findUnique({
     where: { id: playerId },
     select: { id: true, role: true },
@@ -68,28 +68,87 @@ export const uploadVideo = async (multerFile, meta, playerId) => {
       { statusCode: 400 },
     );
   }
-  // ─────────────────────────────────────────────────────────────────────────
 
-  const { url, durationSec, sizeKB, uploadTimeMS } = await uploadMediaToGCS(
-    multerFile,
-    `videos/${playerId}`,
-  );
+  // Upload video + thumbnail in parallel
+  const [videoUpload, thumbnailUpload] = await Promise.all([
+    uploadMediaToGCS(multerFile, `videos/${playerId}`),
+    thumbnailFile
+      ? uploadMediaToGCS(thumbnailFile, `thumbnails/${playerId}`)
+      : Promise.resolve(null),
+  ]);
+
+  // const { url, durationSec, sizeKB, uploadTimeMS } = videoUpload;
+  const { url, mp4Url, durationSec, sizeKB, uploadTimeMS } = videoUpload;  // ← add mp4Url
+
+  const thumbnailUrl = thumbnailUpload?.url ?? null;
 
   console.log(`✅ HLS ready [${sizeKB} KB, ${uploadTimeMS} ms]`);
-
   const video = await prisma.video.create({
     data: {
-      videoUrl:    url,
-      title:       meta.title,
-      description: meta.description ?? null,
-      published:   meta.published   ?? false,
-      durationSec: durationSec      ?? null,
+      videoUrl:     url,
+      mp4Url:       mp4Url ?? null,    // ← store it
+      thumbnailUrl,
+      title:        meta.title,
+      description:  meta.description ?? null,
+      published:    meta.published   ?? false,
+      durationSec:  durationSec      ?? null,
       playerId,
     },
   });
 
+  // const video = await prisma.video.create({
+  //   data: {
+  //     videoUrl:     url,
+  //     thumbnailUrl,                       // ← now included
+  //     title:        meta.title,
+  //     description:  meta.description ?? null,
+  //     published:    meta.published   ?? false,
+  //     durationSec:  durationSec      ?? null,
+  //     playerId,
+  //   },
+  // });
+
   return video;
 };
+// export const uploadVideo = async (multerFile, meta, playerId) => {
+//   // ── Verify the playerId belongs to a real PLAYER ──────────────────────────
+//   const player = await prisma.user.findUnique({
+//     where: { id: playerId },
+//     select: { id: true, role: true },
+//   });
+
+//   if (!player) {
+//     throw Object.assign(new Error('Player not found.'), { statusCode: 404 });
+//   }
+
+//   if (player.role !== 'PLAYER') {
+//     throw Object.assign(
+//       new Error('The target user is not a player.'),
+//       { statusCode: 400 },
+//     );
+//   }
+//   // ─────────────────────────────────────────────────────────────────────────
+
+//   const { url, durationSec, sizeKB, uploadTimeMS } = await uploadMediaToGCS(
+//     multerFile,
+//     `videos/${playerId}`,
+//   );
+
+//   console.log(`✅ HLS ready [${sizeKB} KB, ${uploadTimeMS} ms]`);
+
+//   const video = await prisma.video.create({
+//     data: {
+//       videoUrl:    url,
+//       title:       meta.title,
+//       description: meta.description ?? null,
+//       published:   meta.published   ?? false,
+//       durationSec: durationSec      ?? null,
+//       playerId,
+//     },
+//   });
+
+//   return video;
+// };
 
 // =========================================================
 // 🔹 Upload / update profile avatar
