@@ -1,6 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import ChallengeController from '../controllers/challengeController.js';
+import { upload,uploadVideoWithThumbnail  } from '../config/multer.js';
 
 /**
  * @swagger
@@ -146,7 +147,7 @@ import ChallengeController from '../controllers/challengeController.js';
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', ChallengeController.createChallenge);
+router.post('/', uploadVideoWithThumbnail, ChallengeController.createChallenge);
 
 /**
  * @swagger
@@ -266,7 +267,7 @@ router.get('/:id', ChallengeController.getChallengeById);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put('/:id', ChallengeController.updateChallenge);
+router.put('/:id', uploadVideoWithThumbnail, ChallengeController.updateChallenge);
 
 /**
  * @swagger
