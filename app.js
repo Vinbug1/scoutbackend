@@ -106,8 +106,8 @@ async function startServer() {
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-      console.log(`📚 API Docs: http://c0kk488c4skc448wg008ogck.server.flipzid.com/api-docs`);
-      console.log(`🏥 Health Check: http://c0kk488c4skc448wg008ogck.server.flipzid.com/health`);
+      console.log(`📚 API Docs: https://www.thescouterpro.com/api-docs`);
+      console.log(`🏥 Health Check: https://www.thescouterpro.com/health`);
     });
 
     // Increase timeouts for large file uploads
