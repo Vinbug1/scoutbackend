@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 const baseUrl =
   process.env.NODE_ENV === "production"
-    ? "http://c0kk488c4skc448wg008ogck.server.flipzid.com"
+    ? "https://www.thescouterpro.com"
     : "http://localhost:4000";
 
 console.log("📁 Swagger scanning routes at:", path.resolve(__dirname, "../routes/*.js"));
