@@ -1,5 +1,5 @@
 import ChallengeService from '../services/challengeService.js';
-import { uploadMediaToGCS } from '../middleware/upload.js';
+import { uploadMediaToGCS } from '../config/multer.js';
 import fs from 'fs';
 
 const ChallengeController = {
