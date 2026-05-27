@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { upload,uploadVideoWithThumbnail  } from '../config/multer.js';
+import { upload,uploadVideoWithThumbnail,handleUploadFields  } from '../config/multer.js';
 import { handleVideoUpload, handleAvatarUpload, handleGetUserVideos, handleGetMyProfile, handleGetVideo } from '../controllers/videoController.js';
 import { verifyToken as protect} from '../middleware/auth.js';
 // import { protect, optionalAuth } from './middlewares/auth.js';
@@ -111,8 +111,8 @@ const router = Router();
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.post('/upload', protect, uploadVideoWithThumbnail, handleVideoUpload);
-//                                ↑ replaces upload.single('video')
+router.post('/upload', protect, handleUploadFields, handleVideoUpload);
+// ↑ replaces upload.single('video')
 
 /**
  * @swagger

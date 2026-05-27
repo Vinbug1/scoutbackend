@@ -13,48 +13,35 @@ import {
 // =========================================================
 
 
+import fs from 'fs';
+
 export const handleVideoUpload = async (req, res) => {
+  const multerFile = req.files?.video?.[0]; // ✅ .fields() → req.files, not req.file
+  console.log('multerFile:', JSON.stringify(multerFile, null, 2));
+
   try {
-    const multerFile = req.file;  // ← back to req.file (single upload)
-    console.log("What is the content of this:",multerFile);
+    // ✅ Role check first — before any disk/GCS work
+    if (req.user.role !== 'PLAYER') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only players can upload videos.',
+      });
+    }
 
     if (!multerFile) {
       return res.status(400).json({ success: false, message: 'No video file provided.' });
     }
 
-    const { title, description, published, playerId: bodyPlayerId } = req.body;
+    const { title, description, published } = req.body;
 
     if (!title?.trim()) {
       return res.status(400).json({ success: false, message: 'Video title is required.' });
     }
 
-    const role = req.user.role;
-    let playerId;
-
-    if (role === 'PLAYER') {
-      playerId = req.user.userId;
-
-    } else if (role === 'SCOUT') {
-      const parsed = parseInt(bodyPlayerId, 10);
-      if (!bodyPlayerId || isNaN(parsed)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Scouts must provide a valid playerId in the request body.',
-        });
-      }
-      playerId = parsed;
-
-    } else {
-      return res.status(403).json({
-        success: false,
-        message: 'Only players and scouts can upload videos.',
-      });
-    }
-
     const video = await uploadVideo(
       multerFile,
       { title: title.trim(), description, published: published === 'true' },
-      playerId,
+      req.user.userId, // ✅ always their own ID — no bodyPlayerId needed
     );
 
     return res.status(201).json({
@@ -66,6 +53,13 @@ export const handleVideoUpload = async (req, res) => {
   } catch (err) {
     console.error('❌ handleVideoUpload:', err);
     return res.status(err.statusCode ?? 500).json({ success: false, message: err.message });
+
+  } finally {
+    // ✅ Always delete the multer temp file from disk
+    // uploadMediaToGCS deliberately leaves this to the route (see comment in multer.js line ~189)
+    if (multerFile?.path) {
+      try { fs.unlinkSync(multerFile.path); } catch { /* ignore */ }
+    }
   }
 };
 
