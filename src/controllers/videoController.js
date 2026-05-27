@@ -16,6 +16,7 @@ import {
 export const handleVideoUpload = async (req, res) => {
   try {
     const multerFile = req.file;  // ← back to req.file (single upload)
+    console.log("What is the content of this:",multerFile);
 
     if (!multerFile) {
       return res.status(400).json({ success: false, message: 'No video file provided.' });
@@ -67,61 +68,7 @@ export const handleVideoUpload = async (req, res) => {
     return res.status(err.statusCode ?? 500).json({ success: false, message: err.message });
   }
 };
-// export const handleVideoUpload = async (req, res) => {
-//   try {
-//     if (!req.file) {
-//       return res.status(400).json({ success: false, message: 'No video file provided.' });
-//     }
 
-//     const { title, description, published, playerId: bodyPlayerId } = req.body;
-
-//     if (!title?.trim()) {
-//       return res.status(400).json({ success: false, message: 'Video title is required.' });
-//     }
-
-//     const role = req.user.role; // e.g. 'PLAYER' | 'SCOUT'
-
-//     let playerId;
-
-//     if (role === 'PLAYER') {
-//       // Player uploads their own video — use their own id from JWT
-//       playerId = req.user.userId;
-
-//     } else if (role === 'SCOUT') {
-//       // Scout uploads on behalf of a player — playerId must be in body
-//       const parsed = parseInt(bodyPlayerId, 10);
-//       if (!bodyPlayerId || isNaN(parsed)) {
-//         return res.status(400).json({
-//           success: false,
-//           message: 'Scouts must provide a valid playerId in the request body.',
-//         });
-//       }
-//       playerId = parsed;
-
-//     } else {
-//       return res.status(403).json({
-//         success: false,
-//         message: 'Only players and scouts can upload videos.',
-//       });
-//     }
-
-//     const video = await uploadVideo(
-//       req.file,
-//       { title: title.trim(), description, published: published === 'true' },
-//       playerId,
-//     );
-
-//     return res.status(201).json({
-//       success: true,
-//       message: 'Video uploaded and converted to HLS successfully.',
-//       data: video,
-//     });
-
-//   } catch (err) {
-//     console.error('❌ handleVideoUpload:', err);
-//     return res.status(err.statusCode ?? 500).json({ success: false, message: err.message });
-//   }
-// };
 
 // =========================================================
 // POST /api/users/avatar
