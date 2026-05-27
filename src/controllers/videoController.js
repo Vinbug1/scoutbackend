@@ -32,17 +32,22 @@ export const handleVideoUpload = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No video file provided.' });
     }
 
-    const { title, description, published } = req.body;
+    // ✅ After
+      const { title, description, published } = req.body;
+      console.log('req.body:', req.body); // remove after confirming
 
-    if (!title?.trim()) {
-      return res.status(400).json({ success: false, message: 'Video title is required.' });
-    }
+      const titleStr = String(title ?? '').trim();
 
-    const video = await uploadVideo(
-      multerFile,
-      { title: title.trim(), description, published: published === 'true' },
-      req.user.userId, // ✅ always their own ID — no bodyPlayerId needed
-    );
+      if (!titleStr) {
+        return res.status(400).json({ success: false, message: 'Video title is required.' });
+      }
+
+      const video = await uploadVideo(
+        multerFile,
+        { title: titleStr, description: String(description ?? ''), published: published === 'true' },
+        req.user.userId,
+      );
+
 
     return res.status(201).json({
       success: true,
