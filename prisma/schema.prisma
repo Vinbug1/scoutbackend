@@ -173,6 +173,8 @@ model Video {
   published    Boolean  @default(false)
   durationSec  Int?
   createdAt    DateTime @default(now())
+  status    String  @default("processing") // "processing" | "ready" | "failed"
+
 
   playerId Int
   player   User @relation(fields: [playerId], references: [id])
