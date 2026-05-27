@@ -1,170 +1,3 @@
-import {
-  uploadVideo,
-  uploadAvatar,
-  getVideosByUser,
-  getMyProfileWithVideos,
-  getVideoById,
-} from '../services/videoService.js';
-
-// =========================================================
-// POST /api/videos/upload
-// ─ PLAYER:  playerId comes from JWT (req.user.userId)
-// ─ SCOUT:   playerId must be sent in req.body.playerId
-// =========================================================
-
-
-export const handleVideoUpload = async (req, res) => {
-  try {
-    const multerFile = req.file;  // ← back to req.file (single upload)
-    console.log("What is the content of this:",multerFile);
-
-    if (!multerFile) {
-      return res.status(400).json({ success: false, message: 'No video file provided.' });
-    }
-
-    const { title, description, published, playerId: bodyPlayerId } = req.body;
-
-    if (!title?.trim()) {
-      return res.status(400).json({ success: false, message: 'Video title is required.' });
-    }
-
-    const role = req.user.role;
-    let playerId;
-
-    if (role === 'PLAYER') {
-      playerId = req.user.userId;
-
-    } else if (role === 'SCOUT') {
-      const parsed = parseInt(bodyPlayerId, 10);
-      if (!bodyPlayerId || isNaN(parsed)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Scouts must provide a valid playerId in the request body.',
-        });
-      }
-      playerId = parsed;
-
-    } else {
-      return res.status(403).json({
-        success: false,
-        message: 'Only players and scouts can upload videos.',
-      });
-    }
-
-    const video = await uploadVideo(
-      multerFile,
-      { title: title.trim(), description, published: published === 'true' },
-      playerId,
-    );
-
-    return res.status(201).json({
-      success: true,
-      message: 'Video uploaded and converted to HLS successfully.',
-      data: video,
-    });
-
-  } catch (err) {
-    console.error('❌ handleVideoUpload:', err);
-    return res.status(err.statusCode ?? 500).json({ success: false, message: err.message });
-  }
-};
-
-
-// =========================================================
-// POST /api/users/avatar
-// =========================================================
-export const handleAvatarUpload = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No image file provided.' });
-    }
-
-    const profile = await uploadAvatar(req.file, req.user.userId);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Avatar updated.',
-      data: profile,
-    });
-  } catch (err) {
-    console.error('❌ handleAvatarUpload:', err);
-    return res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// =========================================================
-// GET /api/users/:userId/videos
-// =========================================================
-export const handleGetUserVideos = async (req, res) => {
-  try {
-    const playerId = parseInt(req.params.userId, 10);
-    if (isNaN(playerId)) {
-      return res.status(400).json({ success: false, message: 'Invalid user ID.' });
-    }
-
-    const videos = await getVideosByUser(playerId);
-    return res.status(200).json({ success: true, data: videos });
-  } catch (err) {
-    console.error('❌ handleGetUserVideos:', err);
-    return res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// =========================================================
-// GET /api/me
-// =========================================================
-export const handleGetMyProfile = async (req, res) => {
-  try {
-    const data = await getMyProfileWithVideos(req.user.userId);
-    return res.status(200).json({ success: true, data });
-  } catch (err) {
-    console.error('❌ handleGetMyProfile:', err);
-    return res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// =========================================================
-// GET /api/videos/:videoId
-// =========================================================
-export const handleGetVideo = async (req, res) => {
-  try {
-    const videoId = parseInt(req.params.videoId, 10);
-    if (isNaN(videoId)) {
-      return res.status(400).json({ success: false, message: 'Invalid video ID.' });
-    }
-
-    const viewerId = req.user?.userId ?? null;
-    const rawIp    = req.ip || req.headers['x-forwarded-for'] || '';
-    const ipHash   = rawIp
-      ? Buffer.from(rawIp).toString('base64').slice(0, 32)
-      : null;
-
-    const video = await getVideoById(videoId, viewerId, ipHash);
-    return res.status(200).json({ success: true, data: video });
-  } catch (err) {
-    if (err.code === 'P2025') {
-      return res.status(404).json({ success: false, message: 'Video not found.' });
-    }
-    console.error('❌ handleGetVideo:', err);
-    return res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// // ✅ With .js extension
 // import {
 //   uploadVideo,
 //   uploadAvatar,
@@ -175,24 +8,53 @@ export const handleGetVideo = async (req, res) => {
 
 // // =========================================================
 // // POST /api/videos/upload
-// // multipart field name: "video"
-// // body: { title, description?, published? }
+// // ─ PLAYER:  playerId comes from JWT (req.user.userId)
+// // ─ SCOUT:   playerId must be sent in req.body.playerId
 // // =========================================================
+
+
 // export const handleVideoUpload = async (req, res) => {
 //   try {
-//     if (!req.file) {
+//     const multerFile = req.file;  // ← back to req.file (single upload)
+//     console.log("What is the content of this:",multerFile);
+
+//     if (!multerFile) {
 //       return res.status(400).json({ success: false, message: 'No video file provided.' });
 //     }
 
-//     const { title, description, published } = req.body;
+//     const { title, description, published, playerId: bodyPlayerId } = req.body;
+
 //     if (!title?.trim()) {
 //       return res.status(400).json({ success: false, message: 'Video title is required.' });
 //     }
 
+//     const role = req.user.role;
+//     let playerId;
+
+//     if (role === 'PLAYER') {
+//       playerId = req.user.userId;
+
+//     } else if (role === 'SCOUT') {
+//       const parsed = parseInt(bodyPlayerId, 10);
+//       if (!bodyPlayerId || isNaN(parsed)) {
+//         return res.status(400).json({
+//           success: false,
+//           message: 'Scouts must provide a valid playerId in the request body.',
+//         });
+//       }
+//       playerId = parsed;
+
+//     } else {
+//       return res.status(403).json({
+//         success: false,
+//         message: 'Only players and scouts can upload videos.',
+//       });
+//     }
+
 //     const video = await uploadVideo(
-//       req.file,
+//       multerFile,
 //       { title: title.trim(), description, published: published === 'true' },
-//       req.user.userId,   // set by your auth middleware
+//       playerId,
 //     );
 
 //     return res.status(201).json({
@@ -200,15 +62,16 @@ export const handleGetVideo = async (req, res) => {
 //       message: 'Video uploaded and converted to HLS successfully.',
 //       data: video,
 //     });
+
 //   } catch (err) {
 //     console.error('❌ handleVideoUpload:', err);
-//     return res.status(500).json({ success: false, message: err.message });
+//     return res.status(err.statusCode ?? 500).json({ success: false, message: err.message });
 //   }
 // };
 
+
 // // =========================================================
 // // POST /api/users/avatar
-// // multipart field name: "avatar"
 // // =========================================================
 // export const handleAvatarUpload = async (req, res) => {
 //   try {
@@ -231,7 +94,6 @@ export const handleGetVideo = async (req, res) => {
 
 // // =========================================================
 // // GET /api/users/:userId/videos
-// // Public: fetch all videos for any player by userId
 // // =========================================================
 // export const handleGetUserVideos = async (req, res) => {
 //   try {
@@ -241,7 +103,6 @@ export const handleGetVideo = async (req, res) => {
 //     }
 
 //     const videos = await getVideosByUser(playerId);
-
 //     return res.status(200).json({ success: true, data: videos });
 //   } catch (err) {
 //     console.error('❌ handleGetUserVideos:', err);
@@ -251,7 +112,6 @@ export const handleGetVideo = async (req, res) => {
 
 // // =========================================================
 // // GET /api/me
-// // Protected: full profile + videos for the logged-in user
 // // =========================================================
 // export const handleGetMyProfile = async (req, res) => {
 //   try {
@@ -265,21 +125,17 @@ export const handleGetVideo = async (req, res) => {
 
 // // =========================================================
 // // GET /api/videos/:videoId
-// // Public: single video with reviews + view tracking
 // // =========================================================
 // export const handleGetVideo = async (req, res) => {
 //   try {
-//     const videoId  = parseInt(req.params.videoId, 10);
+//     const videoId = parseInt(req.params.videoId, 10);
 //     if (isNaN(videoId)) {
 //       return res.status(400).json({ success: false, message: 'Invalid video ID.' });
 //     }
 
-//     // viewerId: present if request is authenticated, null otherwise
 //     const viewerId = req.user?.userId ?? null;
-
-//     // Basic IP hashing for anonymous view deduplication
-//     const rawIp  = req.ip || req.headers['x-forwarded-for'] || '';
-//     const ipHash = rawIp
+//     const rawIp    = req.ip || req.headers['x-forwarded-for'] || '';
+//     const ipHash   = rawIp
 //       ? Buffer.from(rawIp).toString('base64').slice(0, 32)
 //       : null;
 
@@ -293,6 +149,150 @@ export const handleGetVideo = async (req, res) => {
 //     return res.status(500).json({ success: false, message: err.message });
 //   }
 // };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ✅ With .js extension
+import {
+  uploadVideo,
+  uploadAvatar,
+  getVideosByUser,
+  getMyProfileWithVideos,
+  getVideoById,
+} from '../services/videoService.js';
+
+// =========================================================
+// POST /api/videos/upload
+// multipart field name: "video"
+// body: { title, description?, published? }
+// =========================================================
+export const handleVideoUpload = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No video file provided.' });
+    }
+
+    const { title, description, published } = req.body;
+    if (!title?.trim()) {
+      return res.status(400).json({ success: false, message: 'Video title is required.' });
+    }
+
+    const video = await uploadVideo(
+      req.file,
+      { title: title.trim(), description, published: published === 'true' },
+      req.user.userId,   // set by your auth middleware
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Video uploaded and converted to HLS successfully.',
+      data: video,
+    });
+  } catch (err) {
+    console.error('❌ handleVideoUpload:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// =========================================================
+// POST /api/users/avatar
+// multipart field name: "avatar"
+// =========================================================
+export const handleAvatarUpload = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No image file provided.' });
+    }
+
+    const profile = await uploadAvatar(req.file, req.user.userId);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Avatar updated.',
+      data: profile,
+    });
+  } catch (err) {
+    console.error('❌ handleAvatarUpload:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// =========================================================
+// GET /api/users/:userId/videos
+// Public: fetch all videos for any player by userId
+// =========================================================
+export const handleGetUserVideos = async (req, res) => {
+  try {
+    const playerId = parseInt(req.params.userId, 10);
+    if (isNaN(playerId)) {
+      return res.status(400).json({ success: false, message: 'Invalid user ID.' });
+    }
+
+    const videos = await getVideosByUser(playerId);
+
+    return res.status(200).json({ success: true, data: videos });
+  } catch (err) {
+    console.error('❌ handleGetUserVideos:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// =========================================================
+// GET /api/me
+// Protected: full profile + videos for the logged-in user
+// =========================================================
+export const handleGetMyProfile = async (req, res) => {
+  try {
+    const data = await getMyProfileWithVideos(req.user.userId);
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    console.error('❌ handleGetMyProfile:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// =========================================================
+// GET /api/videos/:videoId
+// Public: single video with reviews + view tracking
+// =========================================================
+export const handleGetVideo = async (req, res) => {
+  try {
+    const videoId  = parseInt(req.params.videoId, 10);
+    if (isNaN(videoId)) {
+      return res.status(400).json({ success: false, message: 'Invalid video ID.' });
+    }
+
+    // viewerId: present if request is authenticated, null otherwise
+    const viewerId = req.user?.userId ?? null;
+
+    // Basic IP hashing for anonymous view deduplication
+    const rawIp  = req.ip || req.headers['x-forwarded-for'] || '';
+    const ipHash = rawIp
+      ? Buffer.from(rawIp).toString('base64').slice(0, 32)
+      : null;
+
+    const video = await getVideoById(videoId, viewerId, ipHash);
+    return res.status(200).json({ success: true, data: video });
+  } catch (err) {
+    if (err.code === 'P2025') {
+      return res.status(404).json({ success: false, message: 'Video not found.' });
+    }
+    console.error('❌ handleGetVideo:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
 
 
 
