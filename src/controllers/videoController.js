@@ -85,59 +85,6 @@ export const handleVideoUpload = async (req, res) => {
   }
 };
 
-// export const handleVideoUpload = async (req, res) => {
-//   const multerFile = req.files?.video?.[0]; // ✅ .fields() → req.files, not req.file
-//   console.log('multerFile:', JSON.stringify(multerFile, null, 2));
-
-//   try {
-//     // ✅ Role check first — before any disk/GCS work
-//     if (req.user.role !== 'PLAYER') {
-//       return res.status(403).json({
-//         success: false,
-//         message: 'Only players can upload videos.',
-//       });
-//     }
-
-//     if (!multerFile) {
-//       return res.status(400).json({ success: false, message: 'No video file provided.' });
-//     }
-
-//     // ✅ After
-//       const { title, description, published } = req.body;
-//       console.log('req.body:', req.body); // remove after confirming
-
-//       const titleStr = String(title ?? '').trim();
-
-//       if (!titleStr) {
-//         return res.status(400).json({ success: false, message: 'Video title is required.' });
-//       }
-
-//       const video = await uploadVideo(
-//         multerFile,
-//         { title: titleStr, description: String(description ?? ''), published: published === 'true' },
-//         req.user.userId,
-//       );
-
-
-//     return res.status(201).json({
-//       success: true,
-//       message: 'Video uploaded and converted to HLS successfully.',
-//       data: video,
-//     });
-
-//   } catch (err) {
-//     console.error('❌ handleVideoUpload:', err);
-//     return res.status(err.statusCode ?? 500).json({ success: false, message: err.message });
-
-//   } finally {
-//     // ✅ Always delete the multer temp file from disk
-//     // uploadMediaToGCS deliberately leaves this to the route (see comment in multer.js line ~189)
-//     if (multerFile?.path) {
-//       try { fs.unlinkSync(multerFile.path); } catch { /* ignore */ }
-//     }
-//   }
-// };
-
 
 // =========================================================
 // POST /api/users/avatar
