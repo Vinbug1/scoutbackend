@@ -1,5 +1,5 @@
-const fs = require('fs');
-const {
+import fs from 'fs';
+import {
   uploadVideo,
   createPendingVideo,
   updateVideoStatus,
@@ -7,12 +7,12 @@ const {
   getVideosByUser,
   getMyProfileWithVideos,
   getVideoById,
-} = require('../services/video.service');
+} from '../services/videoService.js';
 
 // =========================================================
 // POST /api/videos/upload
 // =========================================================
-const handleVideoUpload = async (req, res) => {
+export const handleVideoUpload = async (req, res) => {
   const multerFile = req.files?.video?.[0];
 
   try {
@@ -89,7 +89,7 @@ const handleVideoUpload = async (req, res) => {
 // =========================================================
 // POST /api/users/avatar
 // =========================================================
-const handleAvatarUpload = async (req, res) => {
+export const handleAvatarUpload = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No image file provided.' });
@@ -111,7 +111,7 @@ const handleAvatarUpload = async (req, res) => {
 // =========================================================
 // GET /api/users/:userId/videos
 // =========================================================
-const handleGetUserVideos = async (req, res) => {
+export const handleGetUserVideos = async (req, res) => {
   try {
     const playerId = parseInt(req.params.userId, 10);
     if (isNaN(playerId)) {
@@ -129,7 +129,7 @@ const handleGetUserVideos = async (req, res) => {
 // =========================================================
 // GET /api/me
 // =========================================================
-const handleGetMyProfile = async (req, res) => {
+export const handleGetMyProfile = async (req, res) => {
   try {
     const data = await getMyProfileWithVideos(req.user.userId);
     return res.status(200).json({ success: true, data });
@@ -142,7 +142,7 @@ const handleGetMyProfile = async (req, res) => {
 // =========================================================
 // GET /api/videos/:videoId
 // =========================================================
-const handleGetVideo = async (req, res) => {
+export const handleGetVideo = async (req, res) => {
   try {
     const videoId = parseInt(req.params.videoId, 10);
     if (isNaN(videoId)) {
@@ -166,13 +166,6 @@ const handleGetVideo = async (req, res) => {
   }
 };
 
-module.exports = {
-  handleVideoUpload,
-  handleAvatarUpload,
-  handleGetUserVideos,
-  handleGetMyProfile,
-  handleGetVideo,
-};
 
 
 
