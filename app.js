@@ -26,6 +26,7 @@ import scoutReportRouters from './src/routes/scoutReportRouters.js';
 import videoRouters from './src/routes/videoRouters.js';
 import videoViewRouters from './src/routes/videoViewRouters.js';
 import swaggerSpec from './src/config/swagger.js';
+import videoCategory from './src/routes/videoCategoryRoutes.js'
 
 const app = express();
 const prisma = new PrismaClient();
@@ -81,6 +82,7 @@ app.use(`${api}/ratings`, ratingRouters);
 app.use(`${api}/scoutReports`, scoutReportRouters);
 app.use(`${api}/videos`, videoRouters);
 app.use(`${api}/videoViews`, videoViewRouters);
+app.use(`${api}/videoCategory`,videoCategory);
 
 // ─── 404 Handler ──────────────────────────────────────────────
 app.use((req, res) => {
