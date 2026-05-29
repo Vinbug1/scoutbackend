@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const { uploadMediaToGCS } = require('../config/multer.js');
+import { PrismaClient } from '@prisma/client';
+import { uploadMediaToGCS } from '../config/multer.js';
 
 const prisma = new PrismaClient();
 
@@ -46,7 +46,7 @@ const avgRating = (ratings) =>
 // =========================================================
 // 🔹 Upload a video for a player
 // =========================================================
-const uploadVideo = async (multerFile, meta, playerId) => {
+export const uploadVideo = async (multerFile, meta, playerId) => {
   const player = await prisma.user.findUnique({
     where:  { id: playerId },
     select: { id: true, role: true },
@@ -65,8 +65,8 @@ const uploadVideo = async (multerFile, meta, playerId) => {
       where: { id: meta.videoId },
       data: {
         videoUrl:     url,
-        thumbnailUrl: thumbnailUrl  ?? null,
-        durationSec:  durationSec   ?? null,
+        thumbnailUrl: thumbnailUrl    ?? null,
+        durationSec:  durationSec     ?? null,
         categoryId:   meta.categoryId ?? null,
         status:       'ready',
       },
@@ -76,12 +76,12 @@ const uploadVideo = async (multerFile, meta, playerId) => {
   return prisma.video.create({
     data: {
       videoUrl:     url,
-      thumbnailUrl: thumbnailUrl      ?? null,
+      thumbnailUrl: thumbnailUrl     ?? null,
       title:        meta.title,
-      description:  meta.description  ?? null,
-      published:    meta.published    ?? false,
-      durationSec:  durationSec       ?? null,
-      categoryId:   meta.categoryId   ?? null,
+      description:  meta.description ?? null,
+      published:    meta.published   ?? false,
+      durationSec:  durationSec      ?? null,
+      categoryId:   meta.categoryId  ?? null,
       playerId,
       status:       'ready',
     },
@@ -91,7 +91,7 @@ const uploadVideo = async (multerFile, meta, playerId) => {
 // =========================================================
 // 🔹 Upload / update profile avatar
 // =========================================================
-const uploadAvatar = async (multerFile, userId) => {
+export const uploadAvatar = async (multerFile, userId) => {
   const { url } = await uploadMediaToGCS(multerFile, `avatars/${userId}`);
 
   const profile = await prisma.profile.upsert({
@@ -106,7 +106,7 @@ const uploadAvatar = async (multerFile, userId) => {
 // =========================================================
 // 🔹 Fetch all videos for a given player (by userId)
 // =========================================================
-const getVideosByUser = async (playerId) => {
+export const getVideosByUser = async (playerId) => {
   const videos = await prisma.video.findMany({
     where:   { playerId },
     orderBy: { createdAt: 'desc' },
@@ -122,7 +122,7 @@ const getVideosByUser = async (playerId) => {
 // =========================================================
 // 🔹 Fetch logged-in user profile + all their videos
 // =========================================================
-const getMyProfileWithVideos = async (userId) => {
+export const getMyProfileWithVideos = async (userId) => {
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
     select: {
@@ -150,7 +150,7 @@ const getMyProfileWithVideos = async (userId) => {
 // =========================================================
 // 🔹 Fetch a single video (public – any viewer)
 // =========================================================
-const getVideoById = async (videoId, viewerId = null, ipHash = null) => {
+export const getVideoById = async (videoId, viewerId = null, ipHash = null) => {
   try {
     await prisma.videoView.create({
       data: { videoId, userId: viewerId, ipHash },
@@ -177,13 +177,13 @@ const getVideoById = async (videoId, viewerId = null, ipHash = null) => {
 // =========================================================
 // 🔹 Create a placeholder record before processing starts
 // =========================================================
-const createPendingVideo = async ({ title, description, published, categoryId, playerId }) => {
+export const createPendingVideo = async ({ title, description, published, categoryId, playerId }) => {
   return prisma.video.create({
     data: {
       title,
-      description:  description  ?? null,
-      published:    published    ?? false,
-      categoryId:   categoryId   ?? null,
+      description:  description ?? null,
+      published:    published   ?? false,
+      categoryId:   categoryId  ?? null,
       playerId,
       status:       'processing',
       videoUrl:     '',
@@ -196,23 +196,12 @@ const createPendingVideo = async ({ title, description, published, categoryId, p
 // =========================================================
 // 🔹 Mark a video record as ready (or failed)
 // =========================================================
-const updateVideoStatus = async (videoId, { status, videoUrl, thumbnailUrl, durationSec }) => {
+export const updateVideoStatus = async (videoId, { status, videoUrl, thumbnailUrl, durationSec }) => {
   return prisma.video.update({
     where: { id: videoId },
     data:  { status, videoUrl, thumbnailUrl, durationSec },
   });
 };
-
-module.exports = {
-  uploadVideo,
-  uploadAvatar,
-  getVideosByUser,
-  getMyProfileWithVideos,
-  getVideoById,
-  createPendingVideo,
-  updateVideoStatus,
-};
-
 
 
 
