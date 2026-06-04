@@ -111,6 +111,7 @@ model User {
   profile           Profile?
   scoutProfile      ScoutProfile?
   videos            Video[]
+  reels             Reel[]
   views             VideoView[]
   comments          Comment[]
   ratings           Rating[]
@@ -175,7 +176,7 @@ model VideoCategory {
   id           Int          @id @default(autoincrement())
   title        String
   categoryType CategoryType @default(GENERAL)
-  videos       Video[]
+   reels       Reel[]
 }
 
 model Video {
@@ -189,8 +190,31 @@ model Video {
   createdAt    DateTime @default(now())
   status       String   @default("processing")
 
-  categoryId Int?
-  category   VideoCategory? @relation(fields: [categoryId], references: [id])
+
+  playerId Int
+  player   User @relation(fields: [playerId], references: [id])
+
+  views    VideoView[]
+  comments Comment[]
+  ratings  Rating[]
+
+  @@index([playerId])
+  @@index([createdAt])
+}
+
+model Reel {
+  id           Int      @id @default(autoincrement())
+  videoUrl     String
+  thumbnailUrl String?
+  title        String
+  description  String?
+  published    Boolean  @default(false)
+  durationSec  Int?
+  createdAt    DateTime @default(now())
+  status       String   @default("processing")
+
+  categoryId Int
+  category   VideoCategory @relation(fields: [categoryId], references: [id])
 
   playerId Int
   player   User @relation(fields: [playerId], references: [id])
@@ -204,6 +228,7 @@ model Video {
   @@index([categoryId])
 }
 
+
 model VideoView {
   id       Int      @id @default(autoincrement())
   videoId  Int
@@ -211,12 +236,15 @@ model VideoView {
   ipHash   String?
   viewedAt DateTime @default(now())
 
+   reelId Int
+  reel  Reel @relation(fields: [reelId], references: [id])
   video Video @relation(fields: [videoId], references: [id])
   user  User? @relation(fields: [userId], references: [id])
 
   @@unique([videoId, userId], name: "unique_view_per_user")
   @@index([videoId])
   @@index([userId])
+  @@index([reelId])
 }
 
 model Comment {
@@ -227,13 +255,16 @@ model Comment {
   videoId Int?
   postId  Int?
   userId  Int
+  reelId  Int
 
+  reel  Reel  @relation(fields: [reelId], references:[id])
   video Video? @relation(fields: [videoId], references: [id])
   post  Post?  @relation(fields: [postId], references: [id])
   user  User   @relation(fields: [userId], references: [id])
 
   @@index([videoId])
   @@index([postId])
+  @@index([reelId])
 }
 
 model Rating {
@@ -243,12 +274,15 @@ model Rating {
 
   videoId Int
   userId  Int
+  reelId  Int
 
+ reel Reel @relation(fields: [reelId], references: [id])
   video Video @relation(fields: [videoId], references: [id])
   user  User  @relation(fields: [userId], references: [id])
 
   @@unique([videoId, userId])
   @@index([videoId])
+  @@index([reelId])
 }
 
 model Ranking {

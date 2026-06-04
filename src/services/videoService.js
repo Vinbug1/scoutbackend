@@ -48,13 +48,13 @@ const avgRating = (ratings) =>
 // =========================================================
 // 🔹 Strip category from videos titled "challenges"
 // =========================================================
-const stripCategoryIfChallenge = (video) => {
-  if (video.title?.toLowerCase() === 'challenges') {
-    const { category, ...rest } = video;
-    return rest;
-  }
-  return video;
-};
+// const stripCategoryIfChallenge = (video) => {
+//   if (video.title?.toLowerCase() === 'challenges') {
+//     const { category, ...rest } = video;
+//     return rest;
+//   }
+//   return video;
+// };
 
 // =========================================================
 // 🔹 Upload a video for a player
@@ -80,7 +80,7 @@ export const uploadVideo = async (multerFile, meta, playerId) => {
         videoUrl:     url,
         thumbnailUrl: thumbnailUrl    ?? null,
         durationSec:  durationSec     ?? null,
-        categoryId:   meta.categoryId ?? null,
+        // categoryId:   meta.categoryId ?? null,
         status:       'ready',
       },
     });
@@ -94,7 +94,7 @@ export const uploadVideo = async (multerFile, meta, playerId) => {
       description:  meta.description ?? null,
       published:    meta.published   ?? false,
       durationSec:  durationSec      ?? null,
-      categoryId:   meta.categoryId  ?? null,
+      // categoryId:   meta.categoryId  ?? null,
       playerId,
       status:       'ready',
     },
@@ -203,7 +203,7 @@ export const createPendingVideo = async ({ title, description, published, catego
       title,
       description:  description ?? null,
       published:    published   ?? false,
-      categoryId:   categoryId  ?? null,
+      // categoryId:   categoryId  ?? null,
       playerId,
       status:       'processing',
       videoUrl:     '',
