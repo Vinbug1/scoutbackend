@@ -1,15 +1,23 @@
 import { videoCategoryService } from '../services/videoCategoryService.js';
 
-// POST /api/video-categories
+const VALID_CATEGORY_TYPES = ['SKILL', 'GENERAL'];
+
+// POST /api/videoCategory
 export const create = async (req, res) => {
   try {
-    const { title } = req.body;
+    const { title, categoryType } = req.body;
 
     if (!title || typeof title !== 'string' || title.trim() === '') {
       return res.status(400).json({ message: 'Title is required.' });
     }
 
-    const category = await videoCategoryService.create(title.trim());
+    if (categoryType && !VALID_CATEGORY_TYPES.includes(categoryType)) {
+      return res.status(400).json({
+        message: `Invalid categoryType. Must be one of: ${VALID_CATEGORY_TYPES.join(', ')}.`,
+      });
+    }
+
+    const category = await videoCategoryService.create(title.trim(), categoryType);
     return res.status(201).json(category);
   } catch (error) {
     console.error('[VideoCategory] create error:', error);
@@ -17,10 +25,18 @@ export const create = async (req, res) => {
   }
 };
 
-// GET /api/video-categories
+// GET /api/videoCategory?categoryType=SKILL
 export const findAll = async (req, res) => {
   try {
-    const categories = await videoCategoryService.findAll();
+    const { categoryType } = req.query;
+
+    if (categoryType && !VALID_CATEGORY_TYPES.includes(categoryType)) {
+      return res.status(400).json({
+        message: `Invalid categoryType. Must be one of: ${VALID_CATEGORY_TYPES.join(', ')}.`,
+      });
+    }
+
+    const categories = await videoCategoryService.findAll(categoryType);
     return res.status(200).json(categories);
   } catch (error) {
     console.error('[VideoCategory] findAll error:', error);
@@ -28,7 +44,7 @@ export const findAll = async (req, res) => {
   }
 };
 
-// GET /api/video-categories/:id
+// GET /api/videoCategory/:id
 export const findById = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -50,7 +66,7 @@ export const findById = async (req, res) => {
   }
 };
 
-// PATCH /api/video-categories/:id
+// PATCH /api/videoCategory/:id
 export const update = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -59,10 +75,20 @@ export const update = async (req, res) => {
       return res.status(400).json({ message: 'Invalid category ID.' });
     }
 
-    const { title } = req.body;
+    const { title, categoryType } = req.body;
 
-    if (!title || typeof title !== 'string' || title.trim() === '') {
-      return res.status(400).json({ message: 'Title is required.' });
+    if (title !== undefined && (typeof title !== 'string' || title.trim() === '')) {
+      return res.status(400).json({ message: 'Title must be a non-empty string.' });
+    }
+
+    if (categoryType && !VALID_CATEGORY_TYPES.includes(categoryType)) {
+      return res.status(400).json({
+        message: `Invalid categoryType. Must be one of: ${VALID_CATEGORY_TYPES.join(', ')}.`,
+      });
+    }
+
+    if (!title && !categoryType) {
+      return res.status(400).json({ message: 'Provide at least a title or categoryType to update.' });
     }
 
     const existing = await videoCategoryService.findById(id);
@@ -70,7 +96,11 @@ export const update = async (req, res) => {
       return res.status(404).json({ message: 'Category not found.' });
     }
 
-    const updated = await videoCategoryService.update(id, title.trim());
+    const data = {};
+    if (title)        data.title        = title.trim();
+    if (categoryType) data.categoryType = categoryType;
+
+    const updated = await videoCategoryService.update(id, data);
     return res.status(200).json(updated);
   } catch (error) {
     console.error('[VideoCategory] update error:', error);
@@ -78,7 +108,7 @@ export const update = async (req, res) => {
   }
 };
 
-// DELETE /api/video-categories/:id
+// DELETE /api/videoCategory/:id
 export const remove = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -112,108 +142,108 @@ export const remove = async (req, res) => {
 
 
 
-// const { videoCategoryService } = require("./videoCategory.service");
 
-// const videoCategoryController = {
-//   // POST /api/video-categories
-//   async create(req, res) {
-//     try {
-//       const { title } = req.body;
 
-//       if (!title || typeof title !== "string" || title.trim() === "") {
-//         return res.status(400).json({ message: "Title is required." });
-//       }
 
-//       const category = await videoCategoryService.create(title.trim());
-//       return res.status(201).json(category);
-//     } catch (error) {
-//       console.error("[VideoCategory] create error:", error);
-//       return res.status(500).json({ message: "Internal server error." });
+// import { videoCategoryService } from '../services/videoCategoryService.js';
+
+// // POST /api/video-categories
+// export const create = async (req, res) => {
+//   try {
+//     const { title } = req.body;
+
+//     if (!title || typeof title !== 'string' || title.trim() === '') {
+//       return res.status(400).json({ message: 'Title is required.' });
 //     }
-//   },
 
-//   // GET /api/video-categories
-//   async findAll(req, res) {
-//     try {
-//       const categories = await videoCategoryService.findAll();
-//       return res.status(200).json(categories);
-//     } catch (error) {
-//       console.error("[VideoCategory] findAll error:", error);
-//       return res.status(500).json({ message: "Internal server error." });
-//     }
-//   },
-
-//   // GET /api/video-categories/:id
-//   async findById(req, res) {
-//     try {
-//       const id = parseInt(req.params.id, 10);
-
-//       if (isNaN(id)) {
-//         return res.status(400).json({ message: "Invalid category ID." });
-//       }
-
-//       const category = await videoCategoryService.findById(id);
-
-//       if (!category) {
-//         return res.status(404).json({ message: "Category not found." });
-//       }
-
-//       return res.status(200).json(category);
-//     } catch (error) {
-//       console.error("[VideoCategory] findById error:", error);
-//       return res.status(500).json({ message: "Internal server error." });
-//     }
-//   },
-
-//   // PATCH /api/video-categories/:id
-//   async update(req, res) {
-//     try {
-//       const id = parseInt(req.params.id, 10);
-
-//       if (isNaN(id)) {
-//         return res.status(400).json({ message: "Invalid category ID." });
-//       }
-
-//       const { title } = req.body;
-
-//       if (!title || typeof title !== "string" || title.trim() === "") {
-//         return res.status(400).json({ message: "Title is required." });
-//       }
-
-//       const existing = await videoCategoryService.findById(id);
-//       if (!existing) {
-//         return res.status(404).json({ message: "Category not found." });
-//       }
-
-//       const updated = await videoCategoryService.update(id, title.trim());
-//       return res.status(200).json(updated);
-//     } catch (error) {
-//       console.error("[VideoCategory] update error:", error);
-//       return res.status(500).json({ message: "Internal server error." });
-//     }
-//   },
-
-//   // DELETE /api/video-categories/:id
-//   async delete(req, res) {
-//     try {
-//       const id = parseInt(req.params.id, 10);
-
-//       if (isNaN(id)) {
-//         return res.status(400).json({ message: "Invalid category ID." });
-//       }
-
-//       const existing = await videoCategoryService.findById(id);
-//       if (!existing) {
-//         return res.status(404).json({ message: "Category not found." });
-//       }
-
-//       await videoCategoryService.delete(id);
-//       return res.status(204).send();
-//     } catch (error) {
-//       console.error("[VideoCategory] delete error:", error);
-//       return res.status(500).json({ message: "Internal server error." });
-//     }
-//   },
+//     const category = await videoCategoryService.create(title.trim());
+//     return res.status(201).json(category);
+//   } catch (error) {
+//     console.error('[VideoCategory] create error:', error);
+//     return res.status(500).json({ message: 'Internal server error.' });
+//   }
 // };
 
-// module.exports = { videoCategoryController };
+// // GET /api/video-categories
+// export const findAll = async (req, res) => {
+//   try {
+//     const categories = await videoCategoryService.findAll();
+//     return res.status(200).json(categories);
+//   } catch (error) {
+//     console.error('[VideoCategory] findAll error:', error);
+//     return res.status(500).json({ message: 'Internal server error.' });
+//   }
+// };
+
+// // GET /api/video-categories/:id
+// export const findById = async (req, res) => {
+//   try {
+//     const id = parseInt(req.params.id, 10);
+
+//     if (isNaN(id)) {
+//       return res.status(400).json({ message: 'Invalid category ID.' });
+//     }
+
+//     const category = await videoCategoryService.findById(id);
+
+//     if (!category) {
+//       return res.status(404).json({ message: 'Category not found.' });
+//     }
+
+//     return res.status(200).json(category);
+//   } catch (error) {
+//     console.error('[VideoCategory] findById error:', error);
+//     return res.status(500).json({ message: 'Internal server error.' });
+//   }
+// };
+
+// // PATCH /api/video-categories/:id
+// export const update = async (req, res) => {
+//   try {
+//     const id = parseInt(req.params.id, 10);
+
+//     if (isNaN(id)) {
+//       return res.status(400).json({ message: 'Invalid category ID.' });
+//     }
+
+//     const { title } = req.body;
+
+//     if (!title || typeof title !== 'string' || title.trim() === '') {
+//       return res.status(400).json({ message: 'Title is required.' });
+//     }
+
+//     const existing = await videoCategoryService.findById(id);
+//     if (!existing) {
+//       return res.status(404).json({ message: 'Category not found.' });
+//     }
+
+//     const updated = await videoCategoryService.update(id, title.trim());
+//     return res.status(200).json(updated);
+//   } catch (error) {
+//     console.error('[VideoCategory] update error:', error);
+//     return res.status(500).json({ message: 'Internal server error.' });
+//   }
+// };
+
+// // DELETE /api/video-categories/:id
+// export const remove = async (req, res) => {
+//   try {
+//     const id = parseInt(req.params.id, 10);
+
+//     if (isNaN(id)) {
+//       return res.status(400).json({ message: 'Invalid category ID.' });
+//     }
+
+//     const existing = await videoCategoryService.findById(id);
+//     if (!existing) {
+//       return res.status(404).json({ message: 'Category not found.' });
+//     }
+
+//     await videoCategoryService.delete(id);
+//     return res.status(204).send();
+//   } catch (error) {
+//     console.error('[VideoCategory] delete error:', error);
+//     return res.status(500).json({ message: 'Internal server error.' });
+//   }
+// };
+

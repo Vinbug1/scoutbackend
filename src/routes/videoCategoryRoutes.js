@@ -27,7 +27,12 @@ const router = Router();
  *             properties:
  *               title:
  *                 type: string
- *                 example: Sports
+ *                 example: Dribbling
+ *               categoryType:
+ *                 type: string
+ *                 enum: [SKILL, GENERAL]
+ *                 default: GENERAL
+ *                 example: SKILL
  *     responses:
  *       201:
  *         description: Category created successfully
@@ -36,7 +41,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/VideoCategory'
  *       400:
- *         description: Title is required
+ *         description: Title is required or invalid categoryType
  *       500:
  *         description: Internal server error
  */
@@ -46,8 +51,16 @@ router.post('/', create);
  * @swagger
  * /api/videoCategory:
  *   get:
- *     summary: Retrieve all video categories
+ *     summary: Retrieve all video categories (optionally filter by categoryType)
  *     tags: [VideoCategories]
+ *     parameters:
+ *       - in: query
+ *         name: categoryType
+ *         schema:
+ *           type: string
+ *           enum: [SKILL, GENERAL]
+ *         required: false
+ *         description: Filter categories by type
  *     responses:
  *       200:
  *         description: List of all categories
@@ -57,6 +70,8 @@ router.post('/', create);
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/VideoCategoryWithCount'
+ *       400:
+ *         description: Invalid categoryType
  *       500:
  *         description: Internal server error
  */
@@ -95,7 +110,7 @@ router.get('/:id', findById);
  * @swagger
  * /api/videoCategory/{id}:
  *   patch:
- *     summary: Update a video category title
+ *     summary: Update a video category title and/or categoryType
  *     tags: [VideoCategories]
  *     parameters:
  *       - in: path
@@ -110,12 +125,14 @@ router.get('/:id', findById);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - title
  *             properties:
  *               title:
  *                 type: string
- *                 example: Entertainment
+ *                 example: Shooting
+ *               categoryType:
+ *                 type: string
+ *                 enum: [SKILL, GENERAL]
+ *                 example: SKILL
  *     responses:
  *       200:
  *         description: Category updated successfully
@@ -124,7 +141,7 @@ router.get('/:id', findById);
  *             schema:
  *               $ref: '#/components/schemas/VideoCategory'
  *       400:
- *         description: Invalid ID or missing title
+ *         description: Invalid ID, missing fields, or invalid categoryType
  *       404:
  *         description: Category not found
  *       500:
@@ -169,7 +186,11 @@ router.delete('/:id', remove);
  *           example: 1
  *         title:
  *           type: string
- *           example: Sports
+ *           example: Dribbling
+ *         categoryType:
+ *           type: string
+ *           enum: [SKILL, GENERAL]
+ *           example: SKILL
  *
  *     VideoCategoryWithCount:
  *       allOf:
@@ -235,18 +256,10 @@ export default router;
 
 
 
+// import { Router } from 'express';
+// import { create, findAll, findById, update, remove } from '../controllers/videoCategoryController.js';
 
-
-
-
-
-
-
-
-// const express = require("express");
-// const { videoCategoryController } = require("./videoCategory.controller");
-
-// const router = express.Router();
+// const router = Router();
 
 // /**
 //  * @swagger
@@ -257,7 +270,7 @@ export default router;
 
 // /**
 //  * @swagger
-//  * /api/video-categories:
+//  * /api/videoCategory:
 //  *   post:
 //  *     summary: Create a new video category
 //  *     tags: [VideoCategories]
@@ -285,11 +298,11 @@ export default router;
 //  *       500:
 //  *         description: Internal server error
 //  */
-// router.post("/", videoCategoryController.create);
+// router.post('/', create);
 
 // /**
 //  * @swagger
-//  * /api/video-categories:
+//  * /api/videoCategory:
 //  *   get:
 //  *     summary: Retrieve all video categories
 //  *     tags: [VideoCategories]
@@ -305,11 +318,11 @@ export default router;
 //  *       500:
 //  *         description: Internal server error
 //  */
-// router.get("/", videoCategoryController.findAll);
+// router.get('/', findAll);
 
 // /**
 //  * @swagger
-//  * /api/video-categories/{id}:
+//  * /api/videoCategory/{id}:
 //  *   get:
 //  *     summary: Get a video category by ID (includes its published videos)
 //  *     tags: [VideoCategories]
@@ -334,11 +347,11 @@ export default router;
 //  *       500:
 //  *         description: Internal server error
 //  */
-// router.get("/:id", videoCategoryController.findById);
+// router.get('/:id', findById);
 
 // /**
 //  * @swagger
-//  * /api/video-categories/{id}:
+//  * /api/videoCategory/{id}:
 //  *   patch:
 //  *     summary: Update a video category title
 //  *     tags: [VideoCategories]
@@ -375,11 +388,11 @@ export default router;
 //  *       500:
 //  *         description: Internal server error
 //  */
-// router.patch("/:id", videoCategoryController.update);
+// router.patch('/:id', update);
 
 // /**
 //  * @swagger
-//  * /api/video-categories/{id}:
+//  * /api/videoCategory/{id}:
 //  *   delete:
 //  *     summary: Delete a video category
 //  *     tags: [VideoCategories]
@@ -400,7 +413,7 @@ export default router;
 //  *       500:
 //  *         description: Internal server error
 //  */
-// router.delete("/:id", videoCategoryController.delete);
+// router.delete('/:id', remove);
 
 // /**
 //  * @swagger
@@ -456,4 +469,9 @@ export default router;
 //  *                     example: ready
 //  */
 
-// module.exports = router;
+// export default router;
+
+
+
+
+
