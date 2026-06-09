@@ -4,13 +4,15 @@
   "type": "module",
   "main": "app.js",
   "scripts": {
-    "start": "npx prisma migrate deploy && node app.js",
+    "start": "npx prisma migrate deploy && node prisma/postMigrate.js && node app.js",
     "dev": "node app.js",
-    "build": "npx prisma generate",
     "migrate": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
     "generate": "prisma generate",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+    "migrate:dev":    "prisma migrate dev && node prisma/postMigrate.js",
+    "migrate:deploy": "prisma migrate deploy && node prisma/postMigrate.js",
+    "migrate:reset":  "prisma migrate reset && node prisma/postMigrate.js",
+    "build":          "prisma generate && prisma migrate deploy && node prisma/postMigrate.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
