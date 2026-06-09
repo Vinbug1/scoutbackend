@@ -2,81 +2,194 @@ import ratingService from '../services/ratingService.js';
 
 const ratingController = {
 
-  // Create a rating
+  // POST /api/ratings
   async createRating(req, res) {
     try {
-      const { score, videoId, userId } = req.body;
+      const { score, videoId, reelId, userId } = req.body;
 
       if (!score || score < 1 || score > 5) {
-        return res.status(400).json({ error: 'Score must be between 1 and 5' });
+        return res.status(400).json({ error: 'Score must be between 1 and 5.' });
       }
 
-      const rating = await ratingService.createRating({ score, videoId, userId });
+      if (!userId) {
+        return res.status(400).json({ error: 'userId is required.' });
+      }
+
+      // Must rate either a video or a reel, not neither
+      if (!videoId && !reelId) {
+        return res.status(400).json({ error: 'Either videoId or reelId is required.' });
+      }
+
+      const rating = await ratingService.createRating({ score, videoId, reelId, userId });
       return res.status(201).json(rating);
     } catch (err) {
-      console.error(err);
+      console.error('[Rating] createRating error:', err);
       if (err.code === 'P2002') {
         return res.status(400).json({ error: 'You have already rated this video.' });
       }
-      return res.status(500).json({ error: 'Server error' });
+      if (err.code === 'P2003') {
+        return res.status(400).json({ error: 'Referenced video, reel, or user does not exist.' });
+      }
+      return res.status(500).json({ error: 'Server error.' });
     }
   },
 
-  // Get all ratings
+  // GET /api/ratings
   async getAllRatings(req, res) {
     try {
       const ratings = await ratingService.getAllRatings();
       return res.status(200).json(ratings);
     } catch (err) {
-      return res.status(500).json({ error: 'Server error' });
+      console.error('[Rating] getAllRatings error:', err);
+      return res.status(500).json({ error: 'Server error.' });
     }
   },
 
-  // Get rating by ID
+  // GET /api/ratings/:id
   async getRatingById(req, res) {
     try {
       const id = Number(req.params.id);
+      if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ error: 'Invalid rating ID.' });
+      }
+
       const rating = await ratingService.getRatingById(id);
       return res.status(200).json(rating);
     } catch (err) {
+      console.error('[Rating] getRatingById error:', err);
       const status = err.statusCode || 500;
-      return res.status(status).json({ error: err.statusCode ? err.message : 'Server error' });
+      return res.status(status).json({
+        error: err.statusCode ? err.message : 'Server error.',
+      });
     }
   },
 
-  // Update rating
+  // PATCH /api/ratings/:id
   async updateRating(req, res) {
     try {
       const id = Number(req.params.id);
-      const { score } = req.body;
+      if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ error: 'Invalid rating ID.' });
+      }
 
-      if (score < 1 || score > 5) {
-        return res.status(400).json({ error: 'Score must be between 1 and 5' });
+      const { score } = req.body;
+      if (!score || score < 1 || score > 5) {
+        return res.status(400).json({ error: 'Score must be between 1 and 5.' });
       }
 
       const rating = await ratingService.updateRating(id, { score });
       return res.status(200).json(rating);
     } catch (err) {
+      console.error('[Rating] updateRating error:', err);
       if (err.code === 'P2025') {
-        return res.status(404).json({ error: 'Rating not found' });
+        return res.status(404).json({ error: 'Rating not found.' });
       }
-      return res.status(500).json({ error: 'Server error' });
+      return res.status(500).json({ error: 'Server error.' });
     }
   },
 
-  // Delete rating
+  // DELETE /api/ratings/:id
   async deleteRating(req, res) {
     try {
       const id = Number(req.params.id);
-      await ratingService.deleteRating(id);
-      return res.status(200).json({ message: 'Rating deleted successfully' });
-    } catch (err) {
-      if (err.code === 'P2025') {
-        return res.status(404).json({ error: 'Rating not found' });
+      if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ error: 'Invalid rating ID.' });
       }
-      return res.status(500).json({ error: 'Server error' });
+
+      await ratingService.deleteRating(id);
+      return res.status(200).json({ message: 'Rating deleted successfully.' });
+    } catch (err) {
+      console.error('[Rating] deleteRating error:', err);
+      if (err.code === 'P2025') {
+        return res.status(404).json({ error: 'Rating not found.' });
+      }
+      return res.status(500).json({ error: 'Server error.' });
     }
   },
 };
 
 export default ratingController;
+
+
+// import ratingService from '../services/ratingService.js';
+
+// const ratingController = {
+
+//   // Create a rating
+//   async createRating(req, res) {
+//     try {
+//       const { score, videoId, userId } = req.body;
+
+//       if (!score || score < 1 || score > 5) {
+//         return res.status(400).json({ error: 'Score must be between 1 and 5' });
+//       }
+
+//       const rating = await ratingService.createRating({ score, videoId, userId });
+//       return res.status(201).json(rating);
+//     } catch (err) {
+//       console.error(err);
+//       if (err.code === 'P2002') {
+//         return res.status(400).json({ error: 'You have already rated this video.' });
+//       }
+//       return res.status(500).json({ error: 'Server error' });
+//     }
+//   },
+
+//   // Get all ratings
+//   async getAllRatings(req, res) {
+//     try {
+//       const ratings = await ratingService.getAllRatings();
+//       return res.status(200).json(ratings);
+//     } catch (err) {
+//       return res.status(500).json({ error: 'Server error' });
+//     }
+//   },
+
+//   // Get rating by ID
+//   async getRatingById(req, res) {
+//     try {
+//       const id = Number(req.params.id);
+//       const rating = await ratingService.getRatingById(id);
+//       return res.status(200).json(rating);
+//     } catch (err) {
+//       const status = err.statusCode || 500;
+//       return res.status(status).json({ error: err.statusCode ? err.message : 'Server error' });
+//     }
+//   },
+
+//   // Update rating
+//   async updateRating(req, res) {
+//     try {
+//       const id = Number(req.params.id);
+//       const { score } = req.body;
+
+//       if (score < 1 || score > 5) {
+//         return res.status(400).json({ error: 'Score must be between 1 and 5' });
+//       }
+
+//       const rating = await ratingService.updateRating(id, { score });
+//       return res.status(200).json(rating);
+//     } catch (err) {
+//       if (err.code === 'P2025') {
+//         return res.status(404).json({ error: 'Rating not found' });
+//       }
+//       return res.status(500).json({ error: 'Server error' });
+//     }
+//   },
+
+//   // Delete rating
+//   async deleteRating(req, res) {
+//     try {
+//       const id = Number(req.params.id);
+//       await ratingService.deleteRating(id);
+//       return res.status(200).json({ message: 'Rating deleted successfully' });
+//     } catch (err) {
+//       if (err.code === 'P2025') {
+//         return res.status(404).json({ error: 'Rating not found' });
+//       }
+//       return res.status(500).json({ error: 'Server error' });
+//     }
+//   },
+// };
+
+// export default ratingController;

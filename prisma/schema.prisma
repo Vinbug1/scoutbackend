@@ -268,9 +268,9 @@ model Comment {
   videoId Int?
   postId  Int?
   userId  Int
-  reelId  Int
+  reelId  Int?  // ✅ optional
 
-  reel  Reel  @relation(fields: [reelId], references:[id])
+  reel  Reel?  @relation(fields: [reelId], references: [id])  // ✅ optional
   video Video? @relation(fields: [videoId], references: [id])
   post  Post?  @relation(fields: [postId], references: [id])
   user  User   @relation(fields: [userId], references: [id])
@@ -285,13 +285,13 @@ model Rating {
   score     Int
   createdAt DateTime @default(now())
 
-  videoId Int
+  videoId Int?  // ✅ optional
   userId  Int
-  reelId  Int
+  reelId  Int?  // ✅ optional
 
- reel Reel @relation(fields: [reelId], references: [id])
-  video Video @relation(fields: [videoId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
+  reel  Reel?  @relation(fields: [reelId], references: [id])   // ✅ optional
+  video Video? @relation(fields: [videoId], references: [id])  // ✅ optional
+  user  User   @relation(fields: [userId], references: [id])
 
   @@unique([videoId, userId])
   @@index([videoId])
