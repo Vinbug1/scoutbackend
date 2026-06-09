@@ -112,7 +112,8 @@ model User {
   scoutProfile      ScoutProfile?
   videos            Video[]
   reels             Reel[]
-  views             VideoView[]
+  views      VideoView[]   // ← keep this
+  reelViews  ReelView[]    // ← add this
   comments          Comment[]
   ratings           Rating[]
   followers         Follower[]             @relation("Followed")
@@ -219,7 +220,7 @@ model Reel {
   playerId Int
   player   User @relation(fields: [playerId], references: [id])
 
-  views    VideoView[]
+  views    ReelView[]   // ← replace VideoView[] with this
   comments Comment[]
   ratings  Rating[]
 
@@ -236,15 +237,27 @@ model VideoView {
   ipHash   String?
   viewedAt DateTime @default(now())
 
-   reelId Int
-  reel  Reel @relation(fields: [reelId], references: [id])
   video Video @relation(fields: [videoId], references: [id])
   user  User? @relation(fields: [userId], references: [id])
 
   @@unique([videoId, userId], name: "unique_view_per_user")
   @@index([videoId])
   @@index([userId])
+}
+
+model ReelView {
+  id       Int      @id @default(autoincrement())
+  reelId   Int
+  userId   Int?
+  ipHash   String?
+  viewedAt DateTime @default(now())
+
+  reel Reel  @relation(fields: [reelId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+
+  @@unique([reelId, userId], name: "unique_reel_view_per_user")
   @@index([reelId])
+  @@index([userId])
 }
 
 model Comment {
