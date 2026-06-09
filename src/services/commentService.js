@@ -2,36 +2,51 @@ import prisma from '../lib/prisma.js';
 
 const commentService = {
 
-  async createComment({ text, userId, postId, videoId }) {
+  async createComment({ text, userId, postId, videoId, reelId }) {
     return prisma.comment.create({
       data: {
         text,
-        userId,
-        postId: postId || null,
-        videoId: videoId || null,
-      }
+        userId:  Number(userId),
+        postId:  postId  ? Number(postId)  : null,
+        videoId: videoId ? Number(videoId) : null,
+        reelId:  reelId  ? Number(reelId)  : null,
+      },
+      include: {
+        user:  { select: { id: true, fullname: true } },
+        post:  true,
+        video: true,
+        reel:  true,
+      },
     });
   },
 
-  async getComments({ postId, videoId }) {
+  // Filter by postId, videoId, or reelId
+  async getComments({ postId, videoId, reelId }) {
     return prisma.comment.findMany({
       where: {
-        postId: postId ? Number(postId) : undefined,
+        postId:  postId  ? Number(postId)  : undefined,
         videoId: videoId ? Number(videoId) : undefined,
+        reelId:  reelId  ? Number(reelId)  : undefined,
       },
       include: {
-        user: true,
-        post: true,
+        user:  { select: { id: true, fullname: true } },
+        post:  true,
         video: true,
+        reel:  true,
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   },
 
   async getCommentById(id) {
     const comment = await prisma.comment.findUnique({
       where: { id },
-      include: { user: true, post: true, video: true }
+      include: {
+        user:  { select: { id: true, fullname: true } },
+        post:  true,
+        video: true,
+        reel:  true,
+      },
     });
 
     if (!comment) {
@@ -46,15 +61,92 @@ const commentService = {
   async updateComment(id, { text }) {
     return prisma.comment.update({
       where: { id },
-      data: { text }
+      data:  { text },
     });
   },
 
   async deleteComment(id) {
-    return prisma.comment.delete({
-      where: { id }
-    });
-  }
+    return prisma.comment.delete({ where: { id } });
+  },
 };
 
 export default commentService;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import prisma from '../lib/prisma.js';
+
+// const commentService = {
+
+//   async createComment({ text, userId, postId, videoId }) {
+//     return prisma.comment.create({
+//       data: {
+//         text,
+//         userId,
+//         postId: postId || null,
+//         videoId: videoId || null,
+//       }
+//     });
+//   },
+
+//   async getComments({ postId, videoId }) {
+//     return prisma.comment.findMany({
+//       where: {
+//         postId: postId ? Number(postId) : undefined,
+//         videoId: videoId ? Number(videoId) : undefined,
+//       },
+//       include: {
+//         user: true,
+//         post: true,
+//         video: true,
+//       },
+//       orderBy: { createdAt: 'desc' }
+//     });
+//   },
+
+//   async getCommentById(id) {
+//     const comment = await prisma.comment.findUnique({
+//       where: { id },
+//       include: { user: true, post: true, video: true }
+//     });
+
+//     if (!comment) {
+//       const error = new Error('Comment not found');
+//       error.statusCode = 404;
+//       throw error;
+//     }
+
+//     return comment;
+//   },
+
+//   async updateComment(id, { text }) {
+//     return prisma.comment.update({
+//       where: { id },
+//       data: { text }
+//     });
+//   },
+
+//   async deleteComment(id) {
+//     return prisma.comment.delete({
+//       where: { id }
+//     });
+//   }
+// };
+
+// export default commentService;
