@@ -166,17 +166,11 @@ model ScoutProfile {
   createdAt DateTime @default(now())
 }
 
-enum CategoryType {
-  SKILL
-  GENERAL
-  TACTICAL
-  PHYSICAL
-}
+
 
 model VideoCategory {
   id           Int          @id @default(autoincrement())
   title        String
-  categoryType CategoryType @default(GENERAL)
    reels       Reel[]
 }
 
