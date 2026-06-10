@@ -6,7 +6,7 @@ import {
   handleGetReel,
   handleGetReelsByCategory,
 } from '../controllers/reelController.js';
-import { verifyToken as protect, optionalAuth } from '../middleware/auth.js';
+import { verifyToken as protect } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -508,7 +508,7 @@ router.post('/upload', protect, handleUploadFields, handleReelUpload);
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/', handleGetReelsByCategory);
+router.get('/', protect, handleGetReelsByCategory);
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -570,7 +570,7 @@ router.get('/', handleGetReelsByCategory);
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/user/:userId', handleGetUserReels);
+router.get('/user/:userId', protect, handleGetUserReels);
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -633,7 +633,7 @@ router.get('/user/:userId', handleGetUserReels);
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/:reelId', optionalAuth, handleGetReel);
+router.get('/:reelId', protect, handleGetReel);
 
 export default router;
 
