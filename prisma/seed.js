@@ -5,10 +5,10 @@ const prisma = new PrismaClient();
 async function main() {
   await prisma.videoCategory.createMany({
     data: [
-      { title: "Skill" },
-      { title: "General" },
-      { title: "TACTICAL"},
-      { title: "PHYSICAL" },
+      { title: "Skills" },
+      { title: "Challenges" },
+      { title: "Training"},
+      { title: "Match" },
     ],
     skipDuplicates: true, // won't error if you run it twice
   });
