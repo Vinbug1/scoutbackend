@@ -177,67 +177,7 @@ const reelController = {
     }
   },
 
-  // ─── Reel-specific comment handlers (lazy-loaded) ────────────────────────────
 
-  // GET /api/reels/:reelId/comments?page=1&limit=20
-  // Triggered: user taps comment icon on a reel
-  async getReelComments(req, res) {
-    try {
-      const { reelId } = req.params;
-      const page  = parseInt(req.query.page,  10) || 1;
-      const limit = parseInt(req.query.limit, 10) || 20;
-
-      const data = await commentService.getReelComments(reelId, { page, limit });
-      return res.status(200).json({ success: true, ...data });
-    } catch (err) {
-      console.error('[Comment] getReelComments error:', err);
-      return res.status(err.status || 500).json({
-        success: false,
-        message: err.message || 'Server error',
-      });
-    }
-  },
-
-  // POST /api/reels/:reelId/comments
-  // Triggered: user submits a comment after opening the comment panel
-  async addReelComment(req, res) {
-    try {
-      const { reelId } = req.params;
-      const { text }   = req.body;
-      const userId     = req.user.id;
-
-      if (!text || !text.trim()) {
-        return res.status(400).json({ success: false, message: 'Comment text is required.' });
-      }
-
-      const comment = await commentService.addReelComment(reelId, userId, text.trim());
-      return res.status(201).json({ success: true, comment });
-    } catch (err) {
-      console.error('[Comment] addReelComment error:', err);
-      return res.status(err.status || 500).json({
-        success: false,
-        message: err.message || 'Server error',
-      });
-    }
-  },
-
-  // DELETE /api/reels/comments/:commentId
-  // Triggered: user deletes their own comment
-  async deleteReelComment(req, res) {
-    try {
-      const { commentId } = req.params;
-      const userId        = req.user.id;
-
-      const result = await commentService.deleteReelComment(commentId, userId);
-      return res.status(200).json({ success: true, ...result });
-    } catch (err) {
-      console.error('[Comment] deleteReelComment error:', err);
-      return res.status(err.status || 500).json({
-        success: false,
-        message: err.message || 'Server error',
-      });
-    }
-  },
 }
 
-
+export default reelController;
