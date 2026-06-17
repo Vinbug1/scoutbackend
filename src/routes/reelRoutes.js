@@ -1,11 +1,14 @@
 import { Router } from 'express';
 import { handleUploadFields } from '../config/multer.js';
-import {
+// reelRoutes.js
+import reelController from '../controllers/reelController.js';
+
+const {
   handleReelUpload,
   handleGetUserReels,
   handleGetReel,
   handleGetReelsByCategory,
-} from '../controllers/reelController.js';
+} = reelController;
 
 
 import { verifyToken as protect } from '../middleware/auth.js';
@@ -638,167 +641,6 @@ router.get('/user/:userId', protect, handleGetUserReels);
 router.get('/:reelId', protect, handleGetReel);
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// REEL COMMENT ROUTES — mounted at /api/reels  (see app.js)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * @swagger
- * /api/reels/{reelId}/comments:
- *   get:
- *     summary: Get paginated comments for a reel
- *     description: >
- *       **Trigger:** user taps the comment icon on a reel.
- *       Returns top-level comments only. Each comment includes `_count.replies`
- *       so the client can render "View X replies" without fetching reply data.
- *     tags: [Reel Comments]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: reelId
- *         required: true
- *         schema:
- *           type: integer
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 20
- *           maximum: 50
- *     responses:
- *       200:
- *         description: Paginated comment list (no replies embedded)
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 comments:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/ReelComment'
- *                 pagination:
- *                   $ref: '#/components/schemas/Pagination'
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Reel not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessError'
- *       500:
- *         description: Server error
- */
-router.get('/:reelId/comments', protect, commentController.getReelComments);
-
-/**
- * @swagger
- * /api/reels/{reelId}/comments:
- *   post:
- *     summary: Post a comment on a reel
- *     tags: [Reel Comments]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: reelId
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [text]
- *             properties:
- *               text:
- *                 type: string
- *                 example: "Incredible footwork!"
- *     responses:
- *       201:
- *         description: Comment posted
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 comment:
- *                   $ref: '#/components/schemas/ReelComment'
- *       400:
- *         description: text is required or reel not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessError'
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
- */
-router.post('/:reelId/comments', protect, commentController.addReelComment);
-
-/**
- * @swagger
- * /api/reels/comments/{commentId}:
- *   delete:
- *     summary: Delete your own comment from a reel
- *     description: Only the comment owner can delete. Cascades to all replies via DB.
- *     tags: [Reel Comments]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: commentId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Comment (and all its replies) deleted
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Comment deleted successfully"
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Not the comment owner
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessError'
- *       404:
- *         description: Comment not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessError'
- *       500:
- *         description: Server error
- */
-router.delete('/:commentId', protect, commentController.deleteReelComment);
 
 // // ─────────────────────────────────────────────────────────────────────────────
 // // REPLY ROUTES — also mounted at /api/reels
