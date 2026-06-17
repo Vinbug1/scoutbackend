@@ -118,6 +118,7 @@ model User {
   ratings           Rating[]
   followers         Follower[]             @relation("Followed")
   following         Follower[]             @relation("Following")
+  replies Reply[]   // ✅ add this
   posts             Post[]
 
   // Scouter only: reports written by this user
@@ -268,6 +269,8 @@ model Comment {
   video Video? @relation(fields: [videoId], references: [id])
   post  Post?  @relation(fields: [postId], references: [id])
   user  User   @relation(fields: [userId], references: [id])
+  replies   Reply[]       // ← ADD THIS
+
 
   @@index([videoId])
   @@index([postId])
@@ -303,6 +306,21 @@ model Ranking {
 
   @@unique([userId])
   @@index([score])
+}
+
+model Reply {
+  id        Int      @id @default(autoincrement())
+  text      String
+  createdAt DateTime @default(now())
+
+  commentId Int
+  userId    Int
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([commentId])
+  @@index([userId])
 }
 
 model Challenge {

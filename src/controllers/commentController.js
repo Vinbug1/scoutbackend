@@ -102,6 +102,57 @@ const commentController = {
       return res.status(500).json({ message: 'Failed to delete comment.' });
     }
   },
+
+
+  async getReelComments (req, res){
+    try {
+      const { reelId } = req.params;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+  
+      const data = await commentService.getReelComments(reelId, { page, limit });
+      return res.status(200).json({ success: true, ...data });
+    } catch (err) {
+      return res
+        .status(err.status || 500)
+        .json({ success: false, message: err.message || "Server error" });
+    }
+  },
+  
+  async addReelComment(req, res){
+    try {
+      const { reelId } = req.params;
+      const { text } = req.body;
+      const userId = req.user.id;
+  
+      if (!text || !text.trim()) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Comment text is required" });
+      }
+  
+      const comment = await commentService.addReelComment(reelId, userId, text.trim());
+      return res.status(201).json({ success: true, comment });
+    } catch (err) {
+      return res
+        .status(err.status || 500)
+        .json({ success: false, message: err.message || "Server error" });
+    }
+  },
+  
+  async deleteReelComment(req, res){
+    try {
+      const { commentId } = req.params;
+      const userId = req.user.id;
+  
+      const result = await commentService.deleteReelComment(commentId, userId);
+      return res.status(200).json({ success: true, ...result });
+    } catch (err) {
+      return res
+        .status(err.status || 500)
+        .json({ success: false, message: err.message || "Server error" });
+    }
+  },
 };
 
 export default commentController;
