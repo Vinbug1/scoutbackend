@@ -1,6 +1,13 @@
 import express from 'express';
-const router = express.Router();
 import commentController from '../controllers/commentController.js';
+import replyController from '../controllers/replyController.js';
+import { verifyToken as protect } from '../middleware/auth.js'; // adjust path as needed
+
+const router = express.Router();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SWAGGER COMPONENT SCHEMAS
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * @swagger
@@ -29,23 +36,27 @@ import commentController from '../controllers/commentController.js';
  *           type: integer
  *           nullable: true
  *           description: The ID of the video (if comment is on a video)
+ *         reelId:
+ *           type: integer
+ *           nullable: true
+ *           description: The ID of the reel (if comment is on a reel)
  *         createdAt:
  *           type: string
  *           format: date-time
- *           description: The date the comment was created
+ *           description: The date the comment was created (used for "1h ago" display)
  *         updatedAt:
  *           type: string
  *           format: date-time
  *           description: The date the comment was last updated
  *       example:
  *         id: 1
- *         text: "This is a great post!"
+ *         text: "Great skills!"
  *         userId: 5
- *         postId: 10
+ *         reelId: 3
+ *         postId: null
  *         videoId: null
  *         createdAt: "2024-01-15T10:30:00.000Z"
- *         updatedAt: "2024-01-15T10:30:00.000Z"
- *     
+ *
  *     CommentInput:
  *       type: object
  *       required:
@@ -60,15 +71,18 @@ import commentController from '../controllers/commentController.js';
  *           description: The ID of the user creating the comment
  *         postId:
  *           type: integer
- *           description: The ID of the post (required if videoId is not provided)
+ *           description: The ID of the post (required if videoId/reelId not provided)
  *         videoId:
  *           type: integer
- *           description: The ID of the video (required if postId is not provided)
+ *           description: The ID of the video (required if postId/reelId not provided)
+ *         reelId:
+ *           type: integer
+ *           description: The ID of the reel (required if postId/videoId not provided)
  *       example:
- *         text: "This is a great post!"
+ *         text: "Great skills!"
  *         userId: 5
- *         postId: 10
- *     
+ *         reelId: 3
+ *
  *     CommentUpdate:
  *       type: object
  *       required:
@@ -78,24 +92,129 @@ import commentController from '../controllers/commentController.js';
  *           type: string
  *           description: The updated comment text
  *       example:
- *         text: "This is an updated comment!"
- *     
+ *         text: "Updated comment text"
+ *
+ *     ReelComment:
+ *       type: object
+ *       description: Lightweight comment shape returned for reel comment feeds
+ *       properties:
+ *         id:
+ *           type: integer
+ *         text:
+ *           type: string
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: ISO timestamp — use on client for "1h ago" formatting
+ *         user:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: integer
+ *             fullname:
+ *               type: string
+ *             profile:
+ *               type: object
+ *               properties:
+ *                 avatarUrl:
+ *                   type: string
+ *                   nullable: true
+ *         _count:
+ *           type: object
+ *           properties:
+ *             replies:
+ *               type: integer
+ *               description: Number of replies on this comment (no reply data fetched)
+ *       example:
+ *         id: 12
+ *         text: "Incredible footwork!"
+ *         createdAt: "2024-06-01T08:00:00.000Z"
+ *         user:
+ *           id: 5
+ *           fullname: "John Doe"
+ *           profile:
+ *             avatarUrl: "https://cdn.example.com/avatar.jpg"
+ *         _count:
+ *           replies: 4
+ *
+ *     Reply:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         text:
+ *           type: string
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: ISO timestamp — use on client for "1h ago" formatting
+ *         user:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: integer
+ *             fullname:
+ *               type: string
+ *             profile:
+ *               type: object
+ *               properties:
+ *                 avatarUrl:
+ *                   type: string
+ *                   nullable: true
+ *       example:
+ *         id: 7
+ *         text: "Agreed, top player!"
+ *         createdAt: "2024-06-01T09:15:00.000Z"
+ *         user:
+ *           id: 9
+ *           fullname: "Jane Smith"
+ *           profile:
+ *             avatarUrl: "https://cdn.example.com/jane.jpg"
+ *
+ *     Pagination:
+ *       type: object
+ *       properties:
+ *         total:
+ *           type: integer
+ *         page:
+ *           type: integer
+ *         limit:
+ *           type: integer
+ *         totalPages:
+ *           type: integer
+ *       example:
+ *         total: 42
+ *         page: 1
+ *         limit: 20
+ *         totalPages: 3
+ *
  *     Error:
  *       type: object
  *       properties:
  *         message:
  *           type: string
- *           description: Error message
  *       example:
  *         message: "Failed to create comment"
  */
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TAGS
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * @swagger
  * tags:
- *   name: Comments
- *   description: Comment management API
+ *   - name: Comments
+ *     description: General comment management (posts, videos, reels)
+ *   - name: Reel Comments
+ *     description: Lazy-loaded comments for reels — fetched on comment icon click
+ *   - name: Replies
+ *     description: Lazy-loaded replies for comments — fetched on "View replies" tap
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GENERAL COMMENT ROUTES  /api/comments
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * @swagger
@@ -117,7 +236,7 @@ import commentController from '../controllers/commentController.js';
  *             schema:
  *               $ref: '#/components/schemas/Comment'
  *       400:
- *         description: Bad request - missing required fields
+ *         description: Missing required fields or invalid references
  *         content:
  *           application/json:
  *             schema:
@@ -148,6 +267,11 @@ router.post('/', commentController.createComment);
  *         schema:
  *           type: integer
  *         description: Filter comments by video ID
+ *       - in: query
+ *         name: reelId
+ *         schema:
+ *           type: integer
+ *         description: Filter comments by reel ID
  *     responses:
  *       200:
  *         description: List of comments retrieved successfully
@@ -170,14 +294,14 @@ router.get('/', commentController.getComments);
  * @swagger
  * /api/comments/{id}:
  *   get:
- *     summary: Get a comment by ID
+ *     summary: Get a single comment by ID
  *     tags: [Comments]
  *     parameters:
  *       - in: path
  *         name: id
+ *         required: true
  *         schema:
  *           type: integer
- *         required: true
  *         description: The comment ID
  *     responses:
  *       200:
@@ -210,9 +334,9 @@ router.get('/:id', commentController.getCommentById);
  *     parameters:
  *       - in: path
  *         name: id
+ *         required: true
  *         schema:
  *           type: integer
- *         required: true
  *         description: The comment ID
  *     requestBody:
  *       required: true
@@ -228,7 +352,7 @@ router.get('/:id', commentController.getCommentById);
  *             schema:
  *               $ref: '#/components/schemas/Comment'
  *       400:
- *         description: Bad request - text is required
+ *         description: text is required
  *         content:
  *           application/json:
  *             schema:
@@ -257,9 +381,9 @@ router.put('/:id', commentController.updateComment);
  *     parameters:
  *       - in: path
  *         name: id
+ *         required: true
  *         schema:
  *           type: integer
- *         required: true
  *         description: The comment ID
  *     responses:
  *       200:
@@ -288,4 +412,707 @@ router.put('/:id', commentController.updateComment);
  */
 router.delete('/:id', commentController.deleteComment);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// REEL COMMENT ROUTES  /api/reels/:reelId/comments
+// Mounted separately — see app.js: app.use('/api/reels', commentRouter)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/reels/{reelId}/comments:
+ *   get:
+ *     summary: Get paginated comments for a reel
+ *     description: >
+ *       Called on comment icon click. Returns lightweight comment objects with
+ *       `createdAt` for "1h ago" formatting. Replies are NOT included —
+ *       they are fetched separately when the user taps "View replies".
+ *     tags: [Reel Comments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reelId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The reel ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 50
+ *         description: Number of comments per page (max 50)
+ *     responses:
+ *       200:
+ *         description: Paginated comment list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 comments:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ReelComment'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         description: Invalid reel ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get('/:reelId/comments', protect, commentController.getReelComments);
+
+/**
+ * @swagger
+ * /api/reels/{reelId}/comments:
+ *   post:
+ *     summary: Post a comment on a reel
+ *     tags: [Reel Comments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reelId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The reel ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - text
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 description: Comment text
+ *             example:
+ *               text: "Incredible footwork!"
+ *     responses:
+ *       201:
+ *         description: Comment posted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 comment:
+ *                   $ref: '#/components/schemas/ReelComment'
+ *       400:
+ *         description: text is required or reel not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/:reelId/comments', protect, commentController.addReelComment);
+
+/**
+ * @swagger
+ * /api/reels/comments/{commentId}:
+ *   delete:
+ *     summary: Delete a comment on a reel
+ *     description: Only the comment owner can delete their comment.
+ *     tags: [Reel Comments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The comment ID to delete
+ *     responses:
+ *       200:
+ *         description: Comment deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Comment deleted successfully"
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden — not the comment owner
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Comment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.delete('/comments/:commentId', protect, commentController.deleteComment);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REPLY ROUTES  /api/reels/comments/:commentId/replies
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/reels/comments/{commentId}/replies:
+ *   get:
+ *     summary: Get paginated replies for a comment
+ *     description: >
+ *       Called when the user taps "View X replies" under a comment.
+ *       Returns replies in ascending order (oldest first) with `createdAt`
+ *       for "1h ago" formatting.
+ *     tags: [Replies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The comment ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 50
+ *         description: Number of replies per page (max 50)
+ *     responses:
+ *       200:
+ *         description: Paginated reply list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 replies:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Reply'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Comment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get('/comments/:commentId/replies', protect, replyController.getReplies);
+
+/**
+ * @swagger
+ * /api/reels/comments/{commentId}/replies:
+ *   post:
+ *     summary: Post a reply to a comment
+ *     tags: [Replies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The comment ID to reply to
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - text
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 description: Reply text
+ *             example:
+ *               text: "Agreed, top player!"
+ *     responses:
+ *       201:
+ *         description: Reply posted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 reply:
+ *                   $ref: '#/components/schemas/Reply'
+ *       400:
+ *         description: text is required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Comment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/comments/:commentId/replies', protect, replyController.createReply);
+
+/**
+ * @swagger
+ * /api/reels/replies/{replyId}:
+ *   delete:
+ *     summary: Delete a reply
+ *     description: Only the reply owner can delete their reply.
+ *     tags: [Replies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: replyId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The reply ID to delete
+ *     responses:
+ *       200:
+ *         description: Reply deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Reply deleted successfully"
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden — not the reply owner
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Reply not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.delete('/replies/:replyId', protect, replyController.deleteReply);
+
 export default router;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import express from 'express';
+// const router = express.Router();
+// import commentController from '../controllers/commentController.js';
+
+// /**
+//  * @swagger
+//  * components:
+//  *   schemas:
+//  *     Comment:
+//  *       type: object
+//  *       required:
+//  *         - text
+//  *         - userId
+//  *       properties:
+//  *         id:
+//  *           type: integer
+//  *           description: The auto-generated id of the comment
+//  *         text:
+//  *           type: string
+//  *           description: The comment text content
+//  *         userId:
+//  *           type: integer
+//  *           description: The ID of the user who created the comment
+//  *         postId:
+//  *           type: integer
+//  *           nullable: true
+//  *           description: The ID of the post (if comment is on a post)
+//  *         videoId:
+//  *           type: integer
+//  *           nullable: true
+//  *           description: The ID of the video (if comment is on a video)
+//  *         createdAt:
+//  *           type: string
+//  *           format: date-time
+//  *           description: The date the comment was created
+//  *         updatedAt:
+//  *           type: string
+//  *           format: date-time
+//  *           description: The date the comment was last updated
+//  *       example:
+//  *         id: 1
+//  *         text: "This is a great post!"
+//  *         userId: 5
+//  *         postId: 10
+//  *         videoId: null
+//  *         createdAt: "2024-01-15T10:30:00.000Z"
+//  *         updatedAt: "2024-01-15T10:30:00.000Z"
+//  *     
+//  *     CommentInput:
+//  *       type: object
+//  *       required:
+//  *         - text
+//  *         - userId
+//  *       properties:
+//  *         text:
+//  *           type: string
+//  *           description: The comment text content
+//  *         userId:
+//  *           type: integer
+//  *           description: The ID of the user creating the comment
+//  *         postId:
+//  *           type: integer
+//  *           description: The ID of the post (required if videoId is not provided)
+//  *         videoId:
+//  *           type: integer
+//  *           description: The ID of the video (required if postId is not provided)
+//  *       example:
+//  *         text: "This is a great post!"
+//  *         userId: 5
+//  *         postId: 10
+//  *     
+//  *     CommentUpdate:
+//  *       type: object
+//  *       required:
+//  *         - text
+//  *       properties:
+//  *         text:
+//  *           type: string
+//  *           description: The updated comment text
+//  *       example:
+//  *         text: "This is an updated comment!"
+//  *     
+//  *     Error:
+//  *       type: object
+//  *       properties:
+//  *         message:
+//  *           type: string
+//  *           description: Error message
+//  *       example:
+//  *         message: "Failed to create comment"
+//  */
+
+// /**
+//  * @swagger
+//  * tags:
+//  *   name: Comments
+//  *   description: Comment management API
+//  */
+
+// /**
+//  * @swagger
+//  * /api/comments:
+//  *   post:
+//  *     summary: Create a new comment
+//  *     tags: [Comments]
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             $ref: '#/components/schemas/CommentInput'
+//  *     responses:
+//  *       201:
+//  *         description: Comment created successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Comment'
+//  *       400:
+//  *         description: Bad request - missing required fields
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  *       500:
+//  *         description: Internal server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.post('/', commentController.createComment);
+
+// /**
+//  * @swagger
+//  * /api/comments:
+//  *   get:
+//  *     summary: Get all comments with optional filters
+//  *     tags: [Comments]
+//  *     parameters:
+//  *       - in: query
+//  *         name: postId
+//  *         schema:
+//  *           type: integer
+//  *         description: Filter comments by post ID
+//  *       - in: query
+//  *         name: videoId
+//  *         schema:
+//  *           type: integer
+//  *         description: Filter comments by video ID
+//  *     responses:
+//  *       200:
+//  *         description: List of comments retrieved successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: array
+//  *               items:
+//  *                 $ref: '#/components/schemas/Comment'
+//  *       500:
+//  *         description: Internal server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.get('/', commentController.getComments);
+
+// /**
+//  * @swagger
+//  * /api/comments/{id}:
+//  *   get:
+//  *     summary: Get a comment by ID
+//  *     tags: [Comments]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         schema:
+//  *           type: integer
+//  *         required: true
+//  *         description: The comment ID
+//  *     responses:
+//  *       200:
+//  *         description: Comment retrieved successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Comment'
+//  *       404:
+//  *         description: Comment not found
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  *       500:
+//  *         description: Internal server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.get('/:id', commentController.getCommentById);
+
+// /**
+//  * @swagger
+//  * /api/comments/{id}:
+//  *   put:
+//  *     summary: Update a comment
+//  *     tags: [Comments]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         schema:
+//  *           type: integer
+//  *         required: true
+//  *         description: The comment ID
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             $ref: '#/components/schemas/CommentUpdate'
+//  *     responses:
+//  *       200:
+//  *         description: Comment updated successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Comment'
+//  *       400:
+//  *         description: Bad request - text is required
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  *       404:
+//  *         description: Comment not found
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  *       500:
+//  *         description: Internal server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.put('/:id', commentController.updateComment);
+
+// /**
+//  * @swagger
+//  * /api/comments/{id}:
+//  *   delete:
+//  *     summary: Delete a comment
+//  *     tags: [Comments]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         schema:
+//  *           type: integer
+//  *         required: true
+//  *         description: The comment ID
+//  *     responses:
+//  *       200:
+//  *         description: Comment deleted successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 message:
+//  *                   type: string
+//  *               example:
+//  *                 message: "Comment deleted successfully"
+//  *       404:
+//  *         description: Comment not found
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  *       500:
+//  *         description: Internal server error
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Error'
+//  */
+// router.delete('/:id', commentController.deleteComment);
+
+// export default router;
