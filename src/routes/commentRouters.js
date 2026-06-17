@@ -3,7 +3,7 @@ import express from 'express';
 import commentController from '../controllers/commentController.js';
 import replyController   from '../controllers/replyController.js';
 import { verifyToken as protect } from '../middleware/auth.js';
-
+import commentLikeController from '../controllers/commentLikeController.js';
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -350,6 +350,294 @@ router.put('/:id', commentController.updateComment);
  *         description: Server error
  */
 router.delete('/:id', commentController.deleteComment);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMMENT LIKES — mounted at /api/reels
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/reels/comments/{commentId}/likes:
+ *   post:
+ *     summary: Toggle like on a comment
+ *     description: >
+ *       **Trigger:** user taps the like/heart icon on a comment.
+ *       Calling this while already liked will unlike.
+ *       Returns the new `liked` state and updated `likesCount`.
+ *     tags: [Comment & Reply Likes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Like toggled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/LikeToggleResult'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Comment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessError'
+ */
+router.post('/:commentId/likes', protect, commentLikeController.toggleCommentLike);
+
+/**
+ * @swagger
+ * /api/reels/comments/{commentId}/likes:
+ *   get:
+ *     summary: Get like count and current user's like status for a comment
+ *     tags: [Comment & Reply Likes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Like info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/CommentLikeInfo'
+ *       404:
+ *         description: Comment not found
+ */
+router.get('/:commentId/likes', protect, commentLikeController.getCommentLikes);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REPLY ROUTES — mounted at /api/reels
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/reels/comments/{commentId}/replies:
+ *   get:
+ *     summary: Get paginated replies for a comment
+ *     description: >
+ *       **Trigger:** user taps "View X replies" under a comment.
+ *       Ordered oldest-first so the thread reads naturally.
+ *     tags: [Replies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 50
+ *     responses:
+ *       200:
+ *         description: Paginated reply list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 replies:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Reply'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       404:
+ *         description: Comment not found
+ */
+router.get('/:commentId/replies', protect, replyController.getReplies);
+
+/**
+ * @swagger
+ * /api/reels/comments/{commentId}/replies:
+ *   post:
+ *     summary: Reply to a comment
+ *     description: >
+ *       **Trigger:** user taps the reply button on a comment, or taps a
+ *       username mention like "@Vincent Williams" to reply directly to that person.
+ *       Pass `mentionedUser` and it will be prepended to the text automatically.
+ *     tags: [Replies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [text]
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 example: "Totally agree!"
+ *               mentionedUser:
+ *                 type: string
+ *                 example: "@Vincent Williams"
+ *                 description: Prepended to text if not already present
+ *     responses:
+ *       201:
+ *         description: Reply posted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 reply:
+ *                   $ref: '#/components/schemas/Reply'
+ *       400:
+ *         description: text is required
+ *       404:
+ *         description: Comment not found
+ */
+router.post('/:commentId/replies', protect, replyController.createReply);
+
+/**
+ * @swagger
+ * /api/reels/replies/{replyId}:
+ *   delete:
+ *     summary: Delete your own reply
+ *     tags: [Replies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: replyId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Reply deleted
+ *       403:
+ *         description: Not the reply owner
+ *       404:
+ *         description: Reply not found
+ */
+router.delete('/replies/:replyId', protect, replyController.deleteReply);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REPLY LIKES — mounted at /api/reels
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/reels/replies/{replyId}/likes:
+ *   post:
+ *     summary: Toggle like on a reply
+ *     description: >
+ *       **Trigger:** user taps the like/heart icon on a reply.
+ *       Calling this while already liked will unlike.
+ *       Returns the new `liked` state and updated `likesCount`.
+ *     tags: [Comment & Reply Likes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: replyId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Like toggled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/LikeToggleResult'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Reply not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessError'
+ */
+router.post('/replies/:replyId/likes', protect, commentLikeController.toggleReplyLike);
+
+/**
+ * @swagger
+ * /api/reels/replies/{replyId}/likes:
+ *   get:
+ *     summary: Get like count and current user's like status for a reply
+ *     tags: [Comment & Reply Likes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: replyId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Like info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/ReplyLikeInfo'
+ *       404:
+ *         description: Reply not found
+ */
+router.get('/replies/:replyId/likes', protect, commentLikeController.getReplyLikes);
+
 
 
 export default router;
