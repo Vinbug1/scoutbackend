@@ -61,6 +61,49 @@ const REEL_WITH_PLAYER_AND_REVIEWS = {
   },
 };
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH for reelService.js
+//
+// The only change needed: remove `comments` from REEL_WITH_REVIEWS.
+// Comments are now fetched lazily via GET /api/reels/:reelId/comments.
+// Everything else (ratings, views, player, category) stays as-is.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// REPLACE your existing REEL_WITH_REVIEWS block with this:
+
+const REEL_WITH_REVIEWS = {
+  category: {
+    select: {
+      id:    true,
+      title: true,
+    },
+  },
+  // ✅ comments block REMOVED — fetched on-demand via comment icon tap
+  ratings: {
+    include: {
+      user: {
+        select: {
+          id:       true,
+          fullname: true,
+        },
+      },
+    },
+  },
+  _count: {
+    select: {
+      views:    true,
+      comments: true, // ✅ keep the COUNT so stats.comments still works
+      ratings:  true,
+    },
+  },
+};
+
+// No other changes needed in reelService.js.
+// formatReel() already handles missing `comments` gracefully since it only
+// spreads `...r` — the comments key simply won't be present in the response,
+// which is exactly what we want.
+
 // =========================================================
 // 🔹 Compute average rating
 // =========================================================
