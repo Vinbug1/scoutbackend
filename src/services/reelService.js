@@ -3,65 +3,6 @@ import { uploadMediaToGCS } from '../config/multer.js';
 
 const prisma = new PrismaClient();
 
-// =========================================================
-// 🔹 Common reel include block (basic – no player)
-// =========================================================
-const REEL_WITH_REVIEWS = {
-  category: {
-    select: {
-      id:    true,
-      title: true,
-    },
-  },
-  comments: {
-    orderBy: { createdAt: 'desc' },
-    include: {
-      user: {
-        select: {
-          id:       true,
-          fullname: true,
-          profile:  { select: { avatarUrl: true } },
-        },
-      },
-    },
-  },
-  ratings: {
-    include: {
-      user: {
-        select: {
-          id:       true,
-          fullname: true,
-        },
-      },
-    },
-  },
-  _count: {
-    select: { views: true, comments: true, ratings: true },
-  },
-};
-
-// =========================================================
-// 🔹 Extended include block (with full player profile)
-// =========================================================
-const REEL_WITH_PLAYER_AND_REVIEWS = {
-  ...REEL_WITH_REVIEWS,
-  player: {
-    select: {
-      id:       true,
-      fullname: true,
-      profile: {
-        select: {
-          avatarUrl: true,
-          position:  true,
-          country:   true,
-          dob:       true,   // ✅ correct field name from schema
-        },
-      },
-    },
-  },
-};
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 // PATCH for reelService.js
 //
@@ -95,6 +36,27 @@ const REEL_WITH_REVIEWS = {
       views:    true,
       comments: true, // ✅ keep the COUNT so stats.comments still works
       ratings:  true,
+    },
+  },
+};
+
+// =========================================================
+// 🔹 Extended include block (with full player profile)
+// =========================================================
+const REEL_WITH_PLAYER_AND_REVIEWS = {
+  ...REEL_WITH_REVIEWS,
+  player: {
+    select: {
+      id:       true,
+      fullname: true,
+      profile: {
+        select: {
+          avatarUrl: true,
+          position:  true,
+          country:   true,
+          dob:       true,   // ✅ correct field name from schema
+        },
+      },
     },
   },
 };
