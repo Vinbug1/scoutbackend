@@ -6,6 +6,9 @@ import {
   handleGetReel,
   handleGetReelsByCategory,
 } from '../controllers/reelController.js';
+
+import replyController       from '../controllers/replyController.js';
+import commentLikeController from '../controllers/commentLikeController.js';
 import { verifyToken as protect } from '../middleware/auth.js';
 
 const router = Router();
