@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 import { uploadMediaToGCS } from '../config/multer.js';
 
-const prisma = new PrismaClient();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PATCH for reelService.js
@@ -60,6 +59,7 @@ const REEL_WITH_PLAYER_AND_REVIEWS = {
     },
   },
 };
+
 
 // No other changes needed in reelService.js.
 // formatReel() already handles missing `comments` gracefully since it only
@@ -230,7 +230,79 @@ export const getReelsByCategory = async (categoryId) => {
   });
 
   return reels.map(formatReel);
-};
+},
+
+
+// ─── Reel-specific comment methods (lazy-loaded) ─────────────────────────────
+
+  /**
+   * Fetch paginated TOP-LEVEL comments for a reel.
+   * Triggered when user taps the comment icon on a reel.
+   * Replies are NOT fetched — only their count is returned per comment.
+   */
+  export const getReelComments = async(reelId, { page = 1, limit = 20 } = {}) => {
+    const skip = (page - 1) * limit;
+
+    const [comments, total] = await Promise.all([
+      prisma.comment.findMany({
+        where:   { reelId: Number(reelId) },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take:    limit,
+        select:  COMMENT_SELECT,
+      }),
+      prisma.comment.count({ where: { reelId: Number(reelId) } }),
+    ]);
+
+    return {
+      comments,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  };
+
+  /**
+   * Post a new top-level comment on a reel.
+   */
+  export const addReelComment = async (reelId, userId, text) => {
+    // Verify the reel exists first
+    const reel = await prisma.reel.findUnique({
+      where:  { id: Number(reelId) },
+      select: { id: true },
+    });
+    if (!reel) throw { status: 404, message: 'Reel not found' };
+
+    return prisma.comment.create({
+      data: {
+        text,
+        reelId: Number(reelId),
+        userId: Number(userId),
+      },
+      select: COMMENT_SELECT,
+    });
+  },
+
+  /**
+   * Delete a comment (only by owner). Cascades to all replies via DB.
+   */
+  export const deleteReelComment = async (commentId, userId) =>  {
+    const comment = await prisma.comment.findUnique({
+      where:  { id: Number(commentId) },
+      select: { userId: true, reelId: true },
+    });
+
+    if (!comment) throw { status: 404, message: 'Comment not found' };
+    if (comment.userId !== Number(userId)) {
+      throw { status: 403, message: 'Not authorized to delete this comment' };
+    }
+
+    await prisma.comment.delete({ where: { id: Number(commentId) } });
+    return { message: 'Comment deleted successfully' };
+  },
 
 
 
