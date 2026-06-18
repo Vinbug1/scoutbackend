@@ -13,6 +13,11 @@ const REPLY_SELECT = {
       profile:  { select: { avatarUrl: true } },
     },
   },
+  _count: {
+    select: {
+      likes: true, // ✅ add this
+    },
+  },
 };
 
 const replyService = {

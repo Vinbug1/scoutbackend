@@ -1,9 +1,14 @@
+// src/controllers/commentLikeController.js
 import commentLikeService from '../services/commentLikeService.js';
 
 const commentLikeController = {
 
-  // POST /api/reels/comments/:commentId/likes
-  // Triggered: user taps the like button on a comment
+  // ─── Comment Likes ───────────────────────────────────────────────────────────
+
+  /**
+   * POST /api/likes/comments/:commentId/toggle
+   * Triggered: user taps the like button on a comment (auth required)
+   */
   async toggleCommentLike(req, res) {
     try {
       const { commentId } = req.params;
@@ -20,7 +25,10 @@ const commentLikeController = {
     }
   },
 
-  // GET /api/reels/comments/:commentId/likes
+  /**
+   * GET /api/likes/comments/:commentId
+   * Get like count + current user's like status for a comment (auth optional)
+   */
   async getCommentLikes(req, res) {
     try {
       const { commentId } = req.params;
@@ -37,8 +45,31 @@ const commentLikeController = {
     }
   },
 
-  // POST /api/reels/replies/:replyId/likes
-  // Triggered: user taps the like button on a reply
+  /**
+   * GET /api/likes/comments/:commentId/count
+   * Get like count only for a comment — no auth required
+   */
+  async getCommentLikesCount(req, res) {
+    try {
+      const { commentId } = req.params;
+
+      const result = await commentLikeService.getCommentLikesCount(commentId);
+      return res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      console.error('[CommentLike] getCommentLikesCount error:', err);
+      return res.status(err.status || 500).json({
+        success: false,
+        message: err.message || 'Server error',
+      });
+    }
+  },
+
+  // ─── Reply Likes ─────────────────────────────────────────────────────────────
+
+  /**
+   * POST /api/likes/replies/:replyId/toggle
+   * Triggered: user taps the like button on a reply (auth required)
+   */
   async toggleReplyLike(req, res) {
     try {
       const { replyId } = req.params;
@@ -55,7 +86,10 @@ const commentLikeController = {
     }
   },
 
-  // GET /api/reels/replies/:replyId/likes
+  /**
+   * GET /api/likes/replies/:replyId
+   * Get like count + current user's like status for a reply (auth optional)
+   */
   async getReplyLikes(req, res) {
     try {
       const { replyId } = req.params;
@@ -71,6 +105,159 @@ const commentLikeController = {
       });
     }
   },
+
+  // ─── Reel Likes ──────────────────────────────────────────────────────────────
+
+  /**
+   * POST /api/likes/reels/:reelId/toggle
+   * Triggered: user taps the like button on a reel (auth required)
+   */
+  async toggleReelLike(req, res) {
+    try {
+      const { reelId } = req.params;
+      const userId     = req.user.id;
+
+      const result = await commentLikeService.toggleReelLike(reelId, userId);
+      return res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      console.error('[CommentLike] toggleReelLike error:', err);
+      return res.status(err.status || 500).json({
+        success: false,
+        message: err.message || 'Server error',
+      });
+    }
+  },
+
+  /**
+   * GET /api/likes/reels/:reelId
+   * Get like count + current user's like status for a reel (auth optional)
+   */
+  async getReelLikes(req, res) {
+    try {
+      const { reelId } = req.params;
+      const userId     = req.user?.id;
+
+      const result = await commentLikeService.getReelLikes(reelId, userId);
+      return res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      console.error('[CommentLike] getReelLikes error:', err);
+      return res.status(err.status || 500).json({
+        success: false,
+        message: err.message || 'Server error',
+      });
+    }
+  },
+
+  /**
+   * GET /api/likes/reels/:reelId/count
+   * Get like count only for a reel — no auth required
+   */
+  async getReelLikesCount(req, res) {
+    try {
+      const { reelId } = req.params;
+
+      const result = await commentLikeService.getReelLikesCount(reelId);
+      return res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      console.error('[CommentLike] getReelLikesCount error:', err);
+      return res.status(err.status || 500).json({
+        success: false,
+        message: err.message || 'Server error',
+      });
+    }
+  },
 };
 
 export default commentLikeController;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import commentLikeService from '../services/commentLikeService.js';
+
+// const commentLikeController = {
+
+//   // POST /api/reels/comments/:commentId/likes
+//   // Triggered: user taps the like button on a comment
+//   async toggleCommentLike(req, res) {
+//     try {
+//       const { commentId } = req.params;
+//       const userId        = req.user.id;
+
+//       const result = await commentLikeService.toggleCommentLike(commentId, userId);
+//       return res.status(200).json({ success: true, data: result });
+//     } catch (err) {
+//       console.error('[CommentLike] toggleCommentLike error:', err);
+//       return res.status(err.status || 500).json({
+//         success: false,
+//         message: err.message || 'Server error',
+//       });
+//     }
+//   },
+
+//   // GET /api/reels/comments/:commentId/likes
+//   async getCommentLikes(req, res) {
+//     try {
+//       const { commentId } = req.params;
+//       const userId        = req.user?.id;
+
+//       const result = await commentLikeService.getCommentLikes(commentId, userId);
+//       return res.status(200).json({ success: true, data: result });
+//     } catch (err) {
+//       console.error('[CommentLike] getCommentLikes error:', err);
+//       return res.status(err.status || 500).json({
+//         success: false,
+//         message: err.message || 'Server error',
+//       });
+//     }
+//   },
+
+//   // POST /api/reels/replies/:replyId/likes
+//   // Triggered: user taps the like button on a reply
+//   async toggleReplyLike(req, res) {
+//     try {
+//       const { replyId } = req.params;
+//       const userId      = req.user.id;
+
+//       const result = await commentLikeService.toggleReplyLike(replyId, userId);
+//       return res.status(200).json({ success: true, data: result });
+//     } catch (err) {
+//       console.error('[CommentLike] toggleReplyLike error:', err);
+//       return res.status(err.status || 500).json({
+//         success: false,
+//         message: err.message || 'Server error',
+//       });
+//     }
+//   },
+
+//   // GET /api/reels/replies/:replyId/likes
+//   async getReplyLikes(req, res) {
+//     try {
+//       const { replyId } = req.params;
+//       const userId      = req.user?.id;
+
+//       const result = await commentLikeService.getReplyLikes(replyId, userId);
+//       return res.status(200).json({ success: true, data: result });
+//     } catch (err) {
+//       console.error('[CommentLike] getReplyLikes error:', err);
+//       return res.status(err.status || 500).json({
+//         success: false,
+//         message: err.message || 'Server error',
+//       });
+//     }
+//   },
+// };
+
+// export default commentLikeController;
