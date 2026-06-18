@@ -1,3 +1,5 @@
+// src/controllers/reelController.js
+
 import fs from 'fs';
 import {
   uploadReel,
@@ -8,176 +10,634 @@ import {
   getReelsByCategory,
 } from '../services/reelService.js';
 
-
-
 const reelController = {
 
   // =========================================================
   // POST /api/reels/upload
   // =========================================================
-  async handleReelUpload  (req, res) {
+  async handleReelUpload(req, res) {
     const multerFile = req.files?.video?.[0];
-  
+
     try {
-      // ── Auth & role check ──────────────────────────────────
+
+      // ─────────────────────────────────────────────
+      // Auth check
+      // ─────────────────────────────────────────────
       if (req.user.role !== 'PLAYER') {
-        return res.status(403).json({ success: false, message: 'Only players can upload reels.' });
-      }
-  
-      if (!multerFile) {
-        return res.status(400).json({ success: false, message: 'No video file provided.' });
-      }
-  
-      // ── Validate body ──────────────────────────────────────
-      const { title, description, published, categoryId } = req.body;
-      const titleStr = String(title ?? '').trim();
-  
-      if (!titleStr) {
-        return res.status(400).json({ success: false, message: 'Reel title is required.' });
-      }
-  
-      const parsedCategoryId = parseInt(categoryId, 10);
-      if (!categoryId || isNaN(parsedCategoryId) || parsedCategoryId <= 0) {
-        return res.status(400).json({ success: false, message: 'A valid categoryId is required for reels.' });
-      }
-  
-      // ── 1. Save pending record ─────────────────────────────
-      let pendingReel;
-      try {
-        pendingReel = await createPendingReel({
-          title:       titleStr,
-          description: String(description ?? ''),
-          published:   published === 'true',
-          categoryId:  parsedCategoryId,
-          playerId:    req.user.userId,
+        return res.status(403).json({
+          success: false,
+          message: 'Only players can upload reels.',
         });
-      } catch (dbErr) {
-        console.error('❌ createPendingReel failed:', dbErr);
-        if (dbErr.code === 'P2003') {
-          return res.status(400).json({ success: false, message: 'Category not found.' });
-        }
-        return res.status(500).json({ success: false, message: 'Failed to create reel record.' });
       }
-  
-      // ── 2. Respond immediately (202) ───────────────────────
+
+      if (!multerFile) {
+        return res.status(400).json({
+          success: false,
+          message: 'No video file provided.',
+        });
+      }
+
+      // ─────────────────────────────────────────────
+      // Validate body
+      // ─────────────────────────────────────────────
+      const {
+        title,
+        description,
+        published,
+        categoryId,
+      } = req.body;
+
+      const titleStr = String(title ?? '').trim();
+
+      if (!titleStr) {
+        return res.status(400).json({
+          success: false,
+          message: 'Reel title is required.',
+        });
+      }
+
+      const parsedCategoryId = Number(categoryId);
+
+      if (
+        !parsedCategoryId ||
+        Number.isNaN(parsedCategoryId) ||
+        parsedCategoryId <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: 'A valid categoryId is required.',
+        });
+      }
+
+      const isPublished =
+        String(published)
+          .toLowerCase()
+          .trim() === 'true';
+
+      // ─────────────────────────────────────────────
+      // Create pending reel
+      // ─────────────────────────────────────────────
+      let pendingReel = null;
+
+      try {
+
+        pendingReel =
+          await createPendingReel({
+            title: titleStr,
+            description:
+              String(description ?? ''),
+            published: isPublished,
+            categoryId:
+              parsedCategoryId,
+            playerId:
+              req.user.userId,
+          });
+
+      } catch (dbErr) {
+
+        console.error(
+          '❌ createPendingReel:',
+          dbErr
+        );
+
+        if (dbErr.code === 'P2003') {
+          return res.status(400).json({
+            success: false,
+            message:
+              'Category not found.',
+          });
+        }
+
+        return res.status(
+          dbErr.statusCode || 500
+        ).json({
+          success: false,
+          message:
+            'Failed to create reel.',
+        });
+
+      }
+
+      // ─────────────────────────────────────────────
+      // Respond immediately
+      // ─────────────────────────────────────────────
       res.status(202).json({
         success: true,
-        message: 'Reel received. Processing in background.',
-        data:    { id: pendingReel.id, status: 'processing', title: titleStr },
-      });
-  
-      // ── 3. Heavy work AFTER response is flushed ────────────
-      uploadReel(
-        multerFile,
-        {
-          title:       titleStr,
-          description: String(description ?? ''),
-          published:   published === 'true',
-          categoryId:  parsedCategoryId,
-          reelId:      pendingReel.id,
+        message:
+          'Reel received. Processing in background.',
+        data: {
+          id: pendingReel.id,
+          title: titleStr,
+          status: 'processing',
         },
-        req.user.userId,
-      )
-        .then(() => console.log(`✅ Reel ${pendingReel.id} ready`))
-        .catch(async (err) => {
-          console.error(`❌ Background reel processing failed [reel ${pendingReel.id}]:`, err);
-          await updateReelStatus(pendingReel.id, {
-            status:       'failed',
-            videoUrl:     '',
-            thumbnailUrl: null,
-            durationSec:  null,
-          }).catch((e) => console.error('❌ updateReelStatus failed:', e));
-        })
-        .finally(() => {
+      });
+
+      // ─────────────────────────────────────────────
+      // Background upload
+      // ─────────────────────────────────────────────
+      (async () => {
+
+        try {
+
+          await uploadReel(
+            multerFile,
+            {
+              reelId:
+                pendingReel.id,
+              title:
+                titleStr,
+              description:
+                String(description ?? ''),
+              published:
+                isPublished,
+              categoryId:
+                parsedCategoryId,
+            },
+            req.user.userId
+          );
+
+          console.log(
+            `✅ Reel ${pendingReel.id} ready`
+          );
+
+        } catch (err) {
+
+          console.error(
+            `❌ Upload failed [${pendingReel.id}]`,
+            err
+          );
+
+          await updateReelStatus(
+            pendingReel.id,
+            {
+              status: 'failed',
+              videoUrl: '',
+              thumbnailUrl: null,
+              durationSec: null,
+            }
+          ).catch(console.error);
+
+        } finally {
+
           if (multerFile?.path) {
-            try { fs.unlinkSync(multerFile.path); } catch { /* ignore */ }
+            await fs.promises
+              .unlink(multerFile.path)
+              .catch(() => {});
           }
-        });
-  
+
+        }
+
+      })();
+
     } catch (err) {
+
+      console.error(
+        '❌ handleReelUpload:',
+        err
+      );
+
       if (multerFile?.path) {
-        try { fs.unlinkSync(multerFile.path); } catch { /* ignore */ }
+        await fs.promises
+          .unlink(multerFile.path)
+          .catch(() => {});
       }
-      console.error('❌ handleReelUpload:', err);
-  
+
       if (!res.headersSent) {
-        return res.status(err.statusCode ?? 500).json({ success: false, message: err.message });
+        return res.status(
+          err.statusCode || 500
+        ).json({
+          success: false,
+          message:
+            err.message ||
+            'Unexpected error',
+        });
       }
+
     }
   },
-  
+
   // =========================================================
   // GET /api/users/:userId/reels
-  // GET /api/users/:userId/reels?categoryId=7
   // =========================================================
-  async handleGetUserReels  (req, res) {
+  async handleGetUserReels(req, res) {
+
     try {
-      const playerId   = parseInt(req.params.userId, 10);
-      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId, 10) : null;
-  
-      if (isNaN(playerId) || playerId <= 0) {
-        return res.status(400).json({ success: false, message: 'Invalid user ID.' });
+
+      const playerId =
+        Number(req.params.userId);
+
+      const categoryId =
+        req.query.categoryId
+          ? Number(
+              req.query.categoryId
+            )
+          : null;
+
+      const viewerId =
+        req.user?.userId ?? null;
+
+      if (
+        Number.isNaN(playerId) ||
+        playerId <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid user ID.',
+        });
       }
-      if (req.query.categoryId && (isNaN(categoryId) || categoryId <= 0)) {
-        return res.status(400).json({ success: false, message: 'Invalid category ID.' });
+
+      if (
+        req.query.categoryId &&
+        (
+          Number.isNaN(categoryId) ||
+          categoryId <= 0
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid category ID.',
+        });
       }
-  
-      const reels = await getReelsByUser(playerId, categoryId);
-      return res.status(200).json({ success: true, data: reels });
+
+      const reels =
+        await getReelsByUser(
+          playerId,
+          categoryId,
+          viewerId
+        );
+
+      return res.status(200).json({
+        success: true,
+        data: reels,
+      });
+
     } catch (err) {
-      console.error('❌ handleGetUserReels:', err);
-      return res.status(500).json({ success: false, message: err.message });
+
+      console.error(
+        '❌ handleGetUserReels:',
+        err
+      );
+
+      return res.status(
+        err.statusCode || 500
+      ).json({
+        success: false,
+        message:
+          err.message,
+      });
+
     }
+
   },
+
   // =========================================================
   // GET /api/reels?categoryId=7
   // =========================================================
-  async handleGetReelsByCategory  (req, res)  {
+  async handleGetReelsByCategory( req,  res  ) {
+
     try {
-      const categoryId = parseInt(req.query.categoryId, 10);
-  
-      if (isNaN(categoryId) || categoryId <= 0) {
-        return res.status(400).json({ success: false, message: 'A valid categoryId query param is required.' });
+
+      const categoryId =
+        Number(
+          req.query.categoryId
+        );
+
+      const viewerId =
+        req.user?.userId ??
+        null;
+
+      if (
+        Number.isNaN(
+          categoryId
+        ) ||
+        categoryId <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Valid categoryId required.',
+        });
       }
-  
-      const reels = await getReelsByCategory(categoryId);
-  
-      // ✅ Always return 200 — empty array is a valid response, not an error
-      return res.status(200).json({ success: true, data: reels });
+
+      const reels =
+        await getReelsByCategory(
+          categoryId,
+          viewerId
+        );
+
+      return res.status(200).json({
+        success: true,
+        data: reels,
+      });
+
     } catch (err) {
-      console.error('❌ handleGetReelsByCategory:', err);
-      return res.status(500).json({ success: false, message: err.message });
+
+      console.error(
+        '❌ handleGetReelsByCategory:',
+        err
+      );
+
+      return res.status(
+        err.statusCode || 500
+      ).json({
+        success: false,
+        message:
+          err.message,
+      });
+
     }
+
   },
-  
+
   // =========================================================
   // GET /api/reels/:reelId
   // =========================================================
-  async handleGetReel  (req, res){
+  async handleGetReel( req, res ) {
+
     try {
-      const reelId = parseInt(req.params.reelId, 10);
-      if (isNaN(reelId) || reelId <= 0) {
-        return res.status(400).json({ success: false, message: 'Invalid reel ID.' });
+
+      const reelId =
+        Number(
+          req.params.reelId
+        );
+
+      if (
+        Number.isNaN(
+          reelId
+        ) ||
+        reelId <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid reel ID.',
+        });
       }
-  
-      const viewerId = req.user?.userId ?? null;
-      const rawIp    = req.ip || req.headers['x-forwarded-for'] || '';
-      const ipHash   = rawIp
-        ? Buffer.from(rawIp).toString('base64').slice(0, 32)
-        : null;
-  
-      const reel = await getReelById(reelId, viewerId, ipHash);
-      return res.status(200).json({ success: true, data: reel });
+
+      const viewerId =
+        req.user?.userId ??
+        null;
+
+      const rawIp =
+        req.headers[
+          'x-forwarded-for'
+        ]
+          ?.split(',')[0]
+          ?.trim() ||
+        req.ip ||
+        '';
+
+      const ipHash =
+        rawIp
+          ? Buffer
+              .from(rawIp)
+              .toString(
+                'base64'
+              )
+              .slice(0, 32)
+          : null;
+
+      const reel =
+        await getReelById(
+          reelId,
+          viewerId,
+          ipHash
+        );
+
+      return res.status(200).json({
+        success: true,
+        data: reel,
+      });
+
     } catch (err) {
-      if (err.code === 'P2025') {
-        return res.status(404).json({ success: false, message: 'Reel not found.' });
+
+      if (
+        err.code ===
+        'P2025'
+      ) {
+        return res.status(404).json({
+          success: false,
+          message:
+            'Reel not found.',
+        });
       }
-      console.error('❌ handleGetReel:', err);
-      return res.status(500).json({ success: false, message: err.message });
+
+      console.error(
+        '❌ handleGetReel:',
+        err
+      );
+
+      return res.status(
+        err.statusCode || 500
+      ).json({
+        success: false,
+        message:
+          err.message,
+      });
+
     }
+
   },
 
-
-}
+};
 
 export default reelController;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import fs from 'fs';
+// import {
+//   uploadReel,
+//   createPendingReel,
+//   updateReelStatus,
+//   getReelsByUser,
+//   getReelById,
+//   getReelsByCategory,
+// } from '../services/reelService.js';
+
+
+
+// const reelController = {
+
+//   // =========================================================
+//   // POST /api/reels/upload
+//   // =========================================================
+//   async handleReelUpload  (req, res) {
+//     const multerFile = req.files?.video?.[0];
+  
+//     try {
+//       // ── Auth & role check ──────────────────────────────────
+//       if (req.user.role !== 'PLAYER') {
+//         return res.status(403).json({ success: false, message: 'Only players can upload reels.' });
+//       }
+  
+//       if (!multerFile) {
+//         return res.status(400).json({ success: false, message: 'No video file provided.' });
+//       }
+  
+//       // ── Validate body ──────────────────────────────────────
+//       const { title, description, published, categoryId } = req.body;
+//       const titleStr = String(title ?? '').trim();
+  
+//       if (!titleStr) {
+//         return res.status(400).json({ success: false, message: 'Reel title is required.' });
+//       }
+  
+//       const parsedCategoryId = parseInt(categoryId, 10);
+//       if (!categoryId || isNaN(parsedCategoryId) || parsedCategoryId <= 0) {
+//         return res.status(400).json({ success: false, message: 'A valid categoryId is required for reels.' });
+//       }
+  
+//       // ── 1. Save pending record ─────────────────────────────
+//       let pendingReel;
+//       try {
+//         pendingReel = await createPendingReel({
+//           title:       titleStr,
+//           description: String(description ?? ''),
+//           published:   published === 'true',
+//           categoryId:  parsedCategoryId,
+//           playerId:    req.user.userId,
+//         });
+//       } catch (dbErr) {
+//         console.error('❌ createPendingReel failed:', dbErr);
+//         if (dbErr.code === 'P2003') {
+//           return res.status(400).json({ success: false, message: 'Category not found.' });
+//         }
+//         return res.status(500).json({ success: false, message: 'Failed to create reel record.' });
+//       }
+  
+//       // ── 2. Respond immediately (202) ───────────────────────
+//       res.status(202).json({
+//         success: true,
+//         message: 'Reel received. Processing in background.',
+//         data:    { id: pendingReel.id, status: 'processing', title: titleStr },
+//       });
+  
+//       // ── 3. Heavy work AFTER response is flushed ────────────
+//       uploadReel(
+//         multerFile,
+//         {
+//           title:       titleStr,
+//           description: String(description ?? ''),
+//           published:   published === 'true',
+//           categoryId:  parsedCategoryId,
+//           reelId:      pendingReel.id,
+//         },
+//         req.user.userId,
+//       )
+//         .then(() => console.log(`✅ Reel ${pendingReel.id} ready`))
+//         .catch(async (err) => {
+//           console.error(`❌ Background reel processing failed [reel ${pendingReel.id}]:`, err);
+//           await updateReelStatus(pendingReel.id, {
+//             status:       'failed',
+//             videoUrl:     '',
+//             thumbnailUrl: null,
+//             durationSec:  null,
+//           }).catch((e) => console.error('❌ updateReelStatus failed:', e));
+//         })
+//         .finally(() => {
+//           if (multerFile?.path) {
+//             try { fs.unlinkSync(multerFile.path); } catch { /* ignore */ }
+//           }
+//         });
+  
+//     } catch (err) {
+//       if (multerFile?.path) {
+//         try { fs.unlinkSync(multerFile.path); } catch { /* ignore */ }
+//       }
+//       console.error('❌ handleReelUpload:', err);
+  
+//       if (!res.headersSent) {
+//         return res.status(err.statusCode ?? 500).json({ success: false, message: err.message });
+//       }
+//     }
+//   },
+  
+//   // =========================================================
+//   // GET /api/users/:userId/reels
+//   // GET /api/users/:userId/reels?categoryId=7
+//   // =========================================================
+//   async handleGetUserReels  (req, res) {
+//     try {
+//       const playerId   = parseInt(req.params.userId, 10);
+//       const categoryId = req.query.categoryId ? parseInt(req.query.categoryId, 10) : null;
+  
+//       if (isNaN(playerId) || playerId <= 0) {
+//         return res.status(400).json({ success: false, message: 'Invalid user ID.' });
+//       }
+//       if (req.query.categoryId && (isNaN(categoryId) || categoryId <= 0)) {
+//         return res.status(400).json({ success: false, message: 'Invalid category ID.' });
+//       }
+  
+//       const reels = await getReelsByUser(playerId, categoryId);
+//       return res.status(200).json({ success: true, data: reels });
+//     } catch (err) {
+//       console.error('❌ handleGetUserReels:', err);
+//       return res.status(500).json({ success: false, message: err.message });
+//     }
+//   },
+//   // =========================================================
+//   // GET /api/reels?categoryId=7
+//   // =========================================================
+//   async handleGetReelsByCategory  (req, res)  {
+//     try {
+//       const categoryId = parseInt(req.query.categoryId, 10);
+  
+//       if (isNaN(categoryId) || categoryId <= 0) {
+//         return res.status(400).json({ success: false, message: 'A valid categoryId query param is required.' });
+//       }
+  
+//       const reels = await getReelsByCategory(categoryId);
+  
+//       // ✅ Always return 200 — empty array is a valid response, not an error
+//       return res.status(200).json({ success: true, data: reels });
+//     } catch (err) {
+//       console.error('❌ handleGetReelsByCategory:', err);
+//       return res.status(500).json({ success: false, message: err.message });
+//     }
+//   },
+  
+//   // =========================================================
+//   // GET /api/reels/:reelId
+//   // =========================================================
+//   async handleGetReel  (req, res){
+//     try {
+//       const reelId = parseInt(req.params.reelId, 10);
+//       if (isNaN(reelId) || reelId <= 0) {
+//         return res.status(400).json({ success: false, message: 'Invalid reel ID.' });
+//       }
+  
+//       const viewerId = req.user?.userId ?? null;
+//       const rawIp    = req.ip || req.headers['x-forwarded-for'] || '';
+//       const ipHash   = rawIp
+//         ? Buffer.from(rawIp).toString('base64').slice(0, 32)
+//         : null;
+  
+//       const reel = await getReelById(reelId, viewerId, ipHash);
+//       return res.status(200).json({ success: true, data: reel });
+//     } catch (err) {
+//       if (err.code === 'P2025') {
+//         return res.status(404).json({ success: false, message: 'Reel not found.' });
+//       }
+//       console.error('❌ handleGetReel:', err);
+//       return res.status(500).json({ success: false, message: err.message });
+//     }
+//   },
+
+
+// }
+
+// export default reelController;
