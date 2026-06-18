@@ -337,949 +337,306 @@ const router = Router();
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
-
-* @swagger
-* /reels/upload:
-* post:
-* ```
-  summary: Upload a player reel
-  ```
-* ```
-  description: |
-  ```
-* ```
-    Authenticated PLAYER users only.
-  ```
-*
-* ```
-    Upload a reel video and immediately receive a pending reel response.
-  ```
-*
-* ```
-    **Upload Flow**
-  ```
-* ```
-    1. Creates a reel record with `status=processing`
-  ```
-* ```
-    2. Returns `202 Accepted`
-  ```
-* ```
-    3. Processes video in background
-  ```
-* ```
-    4. Uploads HLS media to cloud storage
-  ```
-* ```
-    5. Updates status:
-  ```
-* ```
-       - `ready`
-  ```
-* ```
-       - `failed`
-  ```
-*
-* ```
-    Poll `GET /reels/{reelId}` to monitor upload status.
-  ```
-*
-* ```
-  tags: [Reels]
-  ```
-*
-* ```
-  security:
-  ```
-* ```
-    - BearerAuth: []
-  ```
-*
-* ```
-  requestBody:
-  ```
-* ```
-    required: true
-  ```
-*
-* ```
-    content:
-  ```
-* ```
-      multipart/form-data:
-  ```
-*
-* ```
-        schema:
-  ```
-* ```
-          type: object
-  ```
-*
-* ```
-          required:
-  ```
-* ```
-            - video
-  ```
-* ```
-            - title
-  ```
-* ```
-            - categoryId
-  ```
-*
-* ```
-          properties:
-  ```
-*
-* ```
-            video:
-  ```
-* ```
-              type: string
-  ```
-* ```
-              format: binary
-  ```
-* ```
-              description: Reel video file.
-  ```
-*
-* ```
-            title:
-  ```
-* ```
-              type: string
-  ```
-* ```
-              example: My Dribbling Highlights
-  ```
-*
-* ```
-            description:
-  ```
-* ```
-              type: string
-  ```
-* ```
-              example: Scout trials 2026
-  ```
-*
-* ```
-            published:
-  ```
-* ```
-              type: string
-  ```
-* ```
-              enum:
-  ```
-* ```
-                - "true"
-  ```
-* ```
-                - "false"
-  ```
-* ```
-              default: "false"
-  ```
-*
-* ```
-            categoryId:
-  ```
-* ```
-              type: integer
-  ```
-* ```
-              example: 7
-  ```
-*
-* ```
-  responses:
-  ```
-*
-* ```
-    202:
-  ```
-* ```
-      description: Reel accepted and processing started.
-  ```
-*
-* ```
-    400:
-  ```
-* ```
-      description: Validation failed.
-  ```
-*
-* ```
-    401:
-  ```
-* ```
-      $ref: '#/components/responses/Unauthorized'
-  ```
-*
-* ```
-    403:
-  ```
-* ```
-      description: User is not PLAYER.
-  ```
-*
-* ```
-    500:
-  ```
-* ```
-      description: Upload failed.
-  ```
-
-*/
+ * @swagger
+ * /reels/upload:
+ *   post:
+ *     summary: Upload a skill reel
+ *     description: |
+ *       Authenticated players only. Accepts a video file (and optional thumbnail)
+ *       via multipart/form-data. A `categoryId` is required — reels must belong
+ *       to an existing VideoCategory.
+ *
+ *       **Flow:**
+ *       1. A `processing` reel record is created immediately in the database.
+ *       2. A `202` response is returned right away with the pending reel id.
+ *       3. FFmpeg HLS conversion + GCS upload happens in the background.
+ *       4. On success the reel status becomes `ready`. On failure it becomes `failed`.
+ *
+ *       Poll `GET /reels/:reelId` to check `status`.
+ *     tags: [Reels]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video
+ *               - title
+ *               - categoryId
+ *             properties:
+ *               video:
+ *                 type: string
+ *                 format: binary
+ *                 description: Video file (MP4 / MOV / AVI / WEBM). Max 500 MB.
+ *               thumbnail:
+ *                 type: string
+ *                 format: binary
+ *                 description: Optional thumbnail image (JPEG / PNG).
+ *               title:
+ *                 type: string
+ *                 example: My Dribbling Reel
+ *               description:
+ *                 type: string
+ *                 example: Lagos trials 2026
+ *               published:
+ *                 type: string
+ *                 enum: ['true', 'false']
+ *                 default: 'false'
+ *                 description: Pass 'true' to make the reel publicly visible immediately after processing.
+ *               categoryId:
+ *                 type: integer
+ *                 description: ID of the VideoCategory this reel belongs to. Fetch from GET /api/videoCategory.
+ *                 example: 7
+ *     responses:
+ *       202:
+ *         description: Reel received and processing started in background.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessEnvelope'
+ *                 - type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: Reel received. Processing in background.
+ *                     data:
+ *                       $ref: '#/components/schemas/ReelPending'
+ *       400:
+ *         description: |
+ *           Bad request. Possible causes:
+ *           - No video file provided
+ *           - Title is missing or blank
+ *           - categoryId is missing, non-numeric, or ≤ 0
+ *           - categoryId does not exist (Prisma P2003 foreign key violation)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *             examples:
+ *               noFile:
+ *                 summary: No video file
+ *                 value: { success: false, message: 'No video file provided.' }
+ *               noTitle:
+ *                 summary: Missing title
+ *                 value: { success: false, message: 'Reel title is required.' }
+ *               badCategory:
+ *                 summary: Invalid categoryId
+ *                 value: { success: false, message: 'A valid categoryId is required for reels.' }
+ *               categoryNotFound:
+ *                 summary: categoryId does not exist
+ *                 value: { success: false, message: 'Category not found.' }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Authenticated user is not a PLAYER.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *             example:
+ *               success: false
+ *               message: Only players can upload reels.
+ *       500:
+ *         description: Database or upload failure.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *             example:
+ *               success: false
+ *               message: Failed to create reel record.
+ */
 router.post('/upload', protect, handleUploadFields, handleReelUpload);
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
-
-* @swagger
-* /reels:
-* get:
-*
-* ```
-  summary: Get published reels by category
-  ```
-*
-* ```
-  description: |
-  ```
-* ```
-    Returns published reels for a category.
-  ```
-*
-* ```
-    Includes:
-  ```
-* ```
-    - player profile
-  ```
-* ```
-    - category
-  ```
-* ```
-    - ratings
-  ```
-* ```
-    - averageRating
-  ```
-* ```
-    - engagement stats
-  ```
-* ```
-    - viewerActions
-  ```
-*
-* ```
-    Comments are lazy-loaded and are NOT included.
-  ```
-*
-* ```
-    **viewerActions**
-  ```
-* ```
-    Returned only when authenticated.
-  ```
-*
-* ```
-    Example:
-  ```
-* ````
-    ```json
-  ````
-* ```
-    {
-  ```
-* ```
-      "hasLiked": true,
-  ```
-* ```
-      "hasCommented": false,
-  ```
-* ```
-      "hasReplied": true
-  ```
-* ```
-    }
-  ```
-* ````
-    ```
-  ````
-*
-* ```
-    Empty array is returned if nothing matches.
-  ```
-*
-* ```
-  tags: [Reels]
-  ```
-*
-* ```
-  security:
-  ```
-* ```
-    - BearerAuth: []
-  ```
-*
-* ```
-  parameters:
-  ```
-*
-* ```
-    - in: query
-  ```
-* ```
-      name: categoryId
-  ```
-* ```
-      required: true
-  ```
-*
-* ```
-      schema:
-  ```
-* ```
-        type: integer
-  ```
-*
-* ```
-        example: 7
-  ```
-*
-* ```
-  responses:
-  ```
-*
-* ```
-    200:
-  ```
-* ```
-      description: Reels returned.
-  ```
-*
-* ```
-    400:
-  ```
-* ```
-      description: Invalid categoryId.
-  ```
-*
-* ```
-    500:
-  ```
-* ```
-      $ref: '#/components/responses/ServerError'
-  ```
-
-*/
+ * @swagger
+ * /reels:
+ *   get:
+ *     summary: Get all published reels by category
+ *     description: |
+ *       Public endpoint. Returns all reels where `published = true` and
+ *       `categoryId` matches the query param. Each reel includes full player
+ *       info (name, position, age, country), category details, all comments
+ *       (newest first), all ratings, computed `averageRating`, and engagement
+ *       `stats` (views, comments, likes).
+ *
+ *       Returns 404 if the category exists but has no published reels.
+ *     tags: [Reels]
+ *     parameters:
+ *       - in: query
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           example: 7
+ *         description: ID of the category to filter by. Must be a positive integer.
+ *     responses:
+ *       200:
+ *         description: Published reels for the category returned successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessEnvelope'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Reel'
+ *       400:
+ *         description: categoryId query param is missing, non-numeric, or ≤ 0.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *             example:
+ *               success: false
+ *               message: A valid categoryId query param is required.
+ *       404:
+ *         description: No published reels found for this category.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *             example:
+ *               success: false
+ *               message: No reels found for this category.
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 router.get('/', protect, handleGetReelsByCategory);
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
-
-* @swagger
-* /reels/user/{userId}:
-*
-* get:
-*
-* ```
-  summary: Get reels for a player
-  ```
-*
-* ```
-  description: |
-  ```
-* ```
-    Returns reels uploaded by a player.
-  ```
-*
-* ```
-    Supports optional filtering by category.
-  ```
-*
-* ```
-    Includes:
-  ```
-* ```
-    - player
-  ```
-* ```
-    - category
-  ```
-* ```
-    - ratings
-  ```
-* ```
-    - averageRating
-  ```
-* ```
-    - stats
-  ```
-* ```
-    - viewerActions
-  ```
-*
-* ```
-    Comments are lazy-loaded.
-  ```
-*
-* ```
-    Empty array is valid.
-  ```
-*
-* ```
-  tags: [Reels]
-  ```
-*
-* ```
-  security:
-  ```
-* ```
-    - BearerAuth: []
-  ```
-*
-* ```
-  parameters:
-  ```
-*
-* ```
-    - in: path
-  ```
-* ```
-      name: userId
-  ```
-* ```
-      required: true
-  ```
-*
-* ```
-      schema:
-  ```
-* ```
-        type: integer
-  ```
-*
-* ```
-    - in: query
-  ```
-* ```
-      name: categoryId
-  ```
-*
-* ```
-      schema:
-  ```
-* ```
-        type: integer
-  ```
-*
-* ```
-  responses:
-  ```
-*
-* ```
-    200:
-  ```
-* ```
-      description: Reels returned.
-  ```
-*
-* ```
-    400:
-  ```
-* ```
-      description: Invalid user/category id.
-  ```
-*
-* ```
-    500:
-  ```
-* ```
-      $ref: '#/components/responses/ServerError'
-  ```
-
-*/
+ * @swagger
+ * /reels/user/{userId}:
+ *   get:
+ *     summary: Get all reels for a player
+ *     description: |
+ *       Public endpoint. Returns all reels for the given player (`playerId`),
+ *       regardless of `published` status. Optionally filter by `categoryId`.
+ *       Each reel includes full player info, category, all comments, all ratings,
+ *       computed `averageRating`, and engagement `stats`.
+ *
+ *       Returns an empty array if the player has no reels (not a 404).
+ *     tags: [Reels]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           example: 7
+ *         description: The player's User.id.
+ *       - in: query
+ *         name: categoryId
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           example: 7
+ *         description: Optional. Filter reels by VideoCategory.id.
+ *     responses:
+ *       200:
+ *         description: Reels returned successfully (may be an empty array).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessEnvelope'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Reel'
+ *       400:
+ *         description: userId or categoryId is non-numeric or ≤ 0.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *             examples:
+ *               badUserId:
+ *                 summary: Invalid userId
+ *                 value: { success: false, message: 'Invalid user ID.' }
+ *               badCategoryId:
+ *                 summary: Invalid categoryId
+ *                 value: { success: false, message: 'Invalid category ID.' }
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 router.get('/user/:userId', protect, handleGetUserReels);
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
-
-* @swagger
-* /reels/{reelId}:
-*
-* get:
-*
-* ```
-  summary: Get reel details
-  ```
-*
-* ```
-  description: |
-  ```
-* ```
-    Returns one reel.
-  ```
-*
-* ```
-    Includes:
-  ```
-* ```
-    - player
-  ```
-* ```
-    - category
-  ```
-* ```
-    - ratings
-  ```
-* ```
-    - averageRating
-  ```
-* ```
-    - stats
-  ```
-* ```
-    - viewerActions
-  ```
-*
-* ```
-    View tracking:
-  ```
-*
-* ```
-    Authenticated:
-  ```
-* ```
-    one view per `(userId,reelId)`
-  ```
-*
-* ```
-    Anonymous:
-  ```
-* ```
-    one view per hashed IP
-  ```
-*
-* ```
-    Duplicate views ignored.
-  ```
-*
-* ```
-    Comments are lazy-loaded.
-  ```
-*
-* ```
-    Example viewerActions:
-  ```
-*
-* ````
-    ```json
-  ````
-* ```
-    {
-  ```
-* ```
-      "hasLiked": true,
-  ```
-* ```
-      "hasCommented": true,
-  ```
-* ```
-      "hasReplied": false
-  ```
-* ```
-    }
-  ```
-* ````
-    ```
-  ````
-*
-* ```
-  tags: [Reels]
-  ```
-*
-* ```
-  security:
-  ```
-* ```
-    - BearerAuth: []
-  ```
-*
-* ```
-  parameters:
-  ```
-*
-* ```
-    - in: path
-  ```
-* ```
-      name: reelId
-  ```
-*
-* ```
-      required: true
-  ```
-*
-* ```
-      schema:
-  ```
-* ```
-        type: integer
-  ```
-*
-* ```
-        example: 5
-  ```
-*
-* ```
-  responses:
-  ```
-*
-* ```
-    200:
-  ```
-* ```
-      description: Reel returned.
-  ```
-*
-* ```
-    400:
-  ```
-* ```
-      description: Invalid reel ID.
-  ```
-*
-* ```
-    404:
-  ```
-* ```
-      description: Reel not found.
-  ```
-*
-* ```
-    500:
-  ```
-* ```
-      $ref: '#/components/responses/ServerError'
-  ```
-
-*/
+ * @swagger
+ * /reels/{reelId}:
+ *   get:
+ *     summary: Get a single reel by ID
+ *     description: |
+ *       Public endpoint — auth is optional. Returns full reel details.
+ *
+ *       **View tracking** (via ReelView model):
+ *       - Authenticated users: one view recorded per `userId` (unique constraint on reelId + userId).
+ *       - Anonymous users: one view recorded per hashed IP (base64 slice of raw IP, max 32 chars).
+ *       - Duplicate views are silently ignored (try/catch on the create).
+ *
+ *       Returns 404 if no reel exists with the given ID (Prisma P2025).
+ *     tags: [Reels]
+ *     security:
+ *       - {}
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reelId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           example: 5
+ *         description: The Reel.id to fetch.
+ *     responses:
+ *       200:
+ *         description: Reel returned successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessEnvelope'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/Reel'
+ *       400:
+ *         description: reelId is non-numeric or ≤ 0.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *             example:
+ *               success: false
+ *               message: Invalid reel ID.
+ *       404:
+ *         description: No reel found with this ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *             example:
+ *               success: false
+ *               message: Reel not found.
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 router.get('/:reelId', protect, handleGetReel);
-
-
-
-
-// /**
-//  * @swagger
-//  * /reels/upload:
-//  *   post:
-//  *     summary: Upload a skill reel
-//  *     description: |
-//  *       Authenticated players only. Accepts a video file (and optional thumbnail)
-//  *       via multipart/form-data. A `categoryId` is required — reels must belong
-//  *       to an existing VideoCategory.
-//  *
-//  *       **Flow:**
-//  *       1. A `processing` reel record is created immediately in the database.
-//  *       2. A `202` response is returned right away with the pending reel id.
-//  *       3. FFmpeg HLS conversion + GCS upload happens in the background.
-//  *       4. On success the reel status becomes `ready`. On failure it becomes `failed`.
-//  *
-//  *       Poll `GET /reels/:reelId` to check `status`.
-//  *     tags: [Reels]
-//  *     security:
-//  *       - BearerAuth: []
-//  *     requestBody:
-//  *       required: true
-//  *       content:
-//  *         multipart/form-data:
-//  *           schema:
-//  *             type: object
-//  *             required:
-//  *               - video
-//  *               - title
-//  *               - categoryId
-//  *             properties:
-//  *               video:
-//  *                 type: string
-//  *                 format: binary
-//  *                 description: Video file (MP4 / MOV / AVI / WEBM). Max 500 MB.
-//  *               thumbnail:
-//  *                 type: string
-//  *                 format: binary
-//  *                 description: Optional thumbnail image (JPEG / PNG).
-//  *               title:
-//  *                 type: string
-//  *                 example: My Dribbling Reel
-//  *               description:
-//  *                 type: string
-//  *                 example: Lagos trials 2026
-//  *               published:
-//  *                 type: string
-//  *                 enum: ['true', 'false']
-//  *                 default: 'false'
-//  *                 description: Pass 'true' to make the reel publicly visible immediately after processing.
-//  *               categoryId:
-//  *                 type: integer
-//  *                 description: ID of the VideoCategory this reel belongs to. Fetch from GET /api/videoCategory.
-//  *                 example: 7
-//  *     responses:
-//  *       202:
-//  *         description: Reel received and processing started in background.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               allOf:
-//  *                 - $ref: '#/components/schemas/SuccessEnvelope'
-//  *                 - type: object
-//  *                   properties:
-//  *                     message:
-//  *                       type: string
-//  *                       example: Reel received. Processing in background.
-//  *                     data:
-//  *                       $ref: '#/components/schemas/ReelPending'
-//  *       400:
-//  *         description: |
-//  *           Bad request. Possible causes:
-//  *           - No video file provided
-//  *           - Title is missing or blank
-//  *           - categoryId is missing, non-numeric, or ≤ 0
-//  *           - categoryId does not exist (Prisma P2003 foreign key violation)
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/ErrorEnvelope'
-//  *             examples:
-//  *               noFile:
-//  *                 summary: No video file
-//  *                 value: { success: false, message: 'No video file provided.' }
-//  *               noTitle:
-//  *                 summary: Missing title
-//  *                 value: { success: false, message: 'Reel title is required.' }
-//  *               badCategory:
-//  *                 summary: Invalid categoryId
-//  *                 value: { success: false, message: 'A valid categoryId is required for reels.' }
-//  *               categoryNotFound:
-//  *                 summary: categoryId does not exist
-//  *                 value: { success: false, message: 'Category not found.' }
-//  *       401:
-//  *         $ref: '#/components/responses/Unauthorized'
-//  *       403:
-//  *         description: Authenticated user is not a PLAYER.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/ErrorEnvelope'
-//  *             example:
-//  *               success: false
-//  *               message: Only players can upload reels.
-//  *       500:
-//  *         description: Database or upload failure.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/ErrorEnvelope'
-//  *             example:
-//  *               success: false
-//  *               message: Failed to create reel record.
-//  */
-// router.post('/upload', protect, handleUploadFields, handleReelUpload);
-
-// // ─────────────────────────────────────────────────────────────────────────────
-
-// /**
-//  * @swagger
-//  * /reels:
-//  *   get:
-//  *     summary: Get all published reels by category
-//  *     description: |
-//  *       Public endpoint. Returns all reels where `published = true` and
-//  *       `categoryId` matches the query param. Each reel includes full player
-//  *       info (name, position, age, country), category details, all comments
-//  *       (newest first), all ratings, computed `averageRating`, and engagement
-//  *       `stats` (views, comments, likes).
-//  *
-//  *       Returns 404 if the category exists but has no published reels.
-//  *     tags: [Reels]
-//  *     parameters:
-//  *       - in: query
-//  *         name: categoryId
-//  *         required: true
-//  *         schema:
-//  *           type: integer
-//  *           example: 7
-//  *         description: ID of the category to filter by. Must be a positive integer.
-//  *     responses:
-//  *       200:
-//  *         description: Published reels for the category returned successfully.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               allOf:
-//  *                 - $ref: '#/components/schemas/SuccessEnvelope'
-//  *                 - type: object
-//  *                   properties:
-//  *                     data:
-//  *                       type: array
-//  *                       items:
-//  *                         $ref: '#/components/schemas/Reel'
-//  *       400:
-//  *         description: categoryId query param is missing, non-numeric, or ≤ 0.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/ErrorEnvelope'
-//  *             example:
-//  *               success: false
-//  *               message: A valid categoryId query param is required.
-//  *       404:
-//  *         description: No published reels found for this category.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/ErrorEnvelope'
-//  *             example:
-//  *               success: false
-//  *               message: No reels found for this category.
-//  *       500:
-//  *         $ref: '#/components/responses/ServerError'
-//  */
-// router.get('/', protect, handleGetReelsByCategory);
-
-// // ─────────────────────────────────────────────────────────────────────────────
-
-// /**
-//  * @swagger
-//  * /reels/user/{userId}:
-//  *   get:
-//  *     summary: Get all reels for a player
-//  *     description: |
-//  *       Public endpoint. Returns all reels for the given player (`playerId`),
-//  *       regardless of `published` status. Optionally filter by `categoryId`.
-//  *       Each reel includes full player info, category, all comments, all ratings,
-//  *       computed `averageRating`, and engagement `stats`.
-//  *
-//  *       Returns an empty array if the player has no reels (not a 404).
-//  *     tags: [Reels]
-//  *     parameters:
-//  *       - in: path
-//  *         name: userId
-//  *         required: true
-//  *         schema:
-//  *           type: integer
-//  *           example: 7
-//  *         description: The player's User.id.
-//  *       - in: query
-//  *         name: categoryId
-//  *         required: false
-//  *         schema:
-//  *           type: integer
-//  *           example: 7
-//  *         description: Optional. Filter reels by VideoCategory.id.
-//  *     responses:
-//  *       200:
-//  *         description: Reels returned successfully (may be an empty array).
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               allOf:
-//  *                 - $ref: '#/components/schemas/SuccessEnvelope'
-//  *                 - type: object
-//  *                   properties:
-//  *                     data:
-//  *                       type: array
-//  *                       items:
-//  *                         $ref: '#/components/schemas/Reel'
-//  *       400:
-//  *         description: userId or categoryId is non-numeric or ≤ 0.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/ErrorEnvelope'
-//  *             examples:
-//  *               badUserId:
-//  *                 summary: Invalid userId
-//  *                 value: { success: false, message: 'Invalid user ID.' }
-//  *               badCategoryId:
-//  *                 summary: Invalid categoryId
-//  *                 value: { success: false, message: 'Invalid category ID.' }
-//  *       500:
-//  *         $ref: '#/components/responses/ServerError'
-//  */
-// router.get('/user/:userId', protect, handleGetUserReels);
-
-// // ─────────────────────────────────────────────────────────────────────────────
-
-// /**
-//  * @swagger
-//  * /reels/{reelId}:
-//  *   get:
-//  *     summary: Get a single reel by ID
-//  *     description: |
-//  *       Public endpoint — auth is optional. Returns full reel details.
-//  *
-//  *       **View tracking** (via ReelView model):
-//  *       - Authenticated users: one view recorded per `userId` (unique constraint on reelId + userId).
-//  *       - Anonymous users: one view recorded per hashed IP (base64 slice of raw IP, max 32 chars).
-//  *       - Duplicate views are silently ignored (try/catch on the create).
-//  *
-//  *       Returns 404 if no reel exists with the given ID (Prisma P2025).
-//  *     tags: [Reels]
-//  *     security:
-//  *       - {}
-//  *       - BearerAuth: []
-//  *     parameters:
-//  *       - in: path
-//  *         name: reelId
-//  *         required: true
-//  *         schema:
-//  *           type: integer
-//  *           example: 5
-//  *         description: The Reel.id to fetch.
-//  *     responses:
-//  *       200:
-//  *         description: Reel returned successfully.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               allOf:
-//  *                 - $ref: '#/components/schemas/SuccessEnvelope'
-//  *                 - type: object
-//  *                   properties:
-//  *                     data:
-//  *                       $ref: '#/components/schemas/Reel'
-//  *       400:
-//  *         description: reelId is non-numeric or ≤ 0.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/ErrorEnvelope'
-//  *             example:
-//  *               success: false
-//  *               message: Invalid reel ID.
-//  *       404:
-//  *         description: No reel found with this ID.
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/ErrorEnvelope'
-//  *             example:
-//  *               success: false
-//  *               message: Reel not found.
-//  *       500:
-//  *         $ref: '#/components/responses/ServerError'
-//  */
-// router.get('/:reelId', protect, handleGetReel);
 
 
 // ─────────────────────────────────────────────────────────────────────────────
