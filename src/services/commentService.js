@@ -27,9 +27,19 @@ const COMMENT_SELECT = {
 //    - hasReplied: viewer posted at least one reply on this comment
 // =========================================================
 const attachViewerCommentInteractions = async (comments, viewerId) => {
+  // ── flatten profile.avatarUrl onto user for every comment ──────────────────
+  const flatten = (c) => ({
+    ...c,
+    user: {
+      id:        c.user.id,
+      fullname:  c.user.fullname,
+      avatarUrl: c.user.profile?.avatarUrl ?? null,
+    },
+  });
+
   if (!viewerId || comments.length === 0) {
     return comments.map((c) => ({
-      ...c,
+      ...flatten(c),
       viewerActions: {
         hasLiked:   false,
         hasReplied: false,
@@ -40,21 +50,12 @@ const attachViewerCommentInteractions = async (comments, viewerId) => {
   const commentIds = comments.map((c) => c.id);
 
   const [likes, replies] = await Promise.all([
-    // Comments the viewer has liked
     prisma.commentLike.findMany({
-      where: {
-        userId:    viewerId,
-        commentId: { in: commentIds },
-      },
+      where:  { userId: viewerId, commentId: { in: commentIds } },
       select: { commentId: true },
     }),
-
-    // Comments the viewer has replied to
     prisma.reply.findMany({
-      where: {
-        userId:    viewerId,
-        commentId: { in: commentIds },
-      },
+      where:  { userId: viewerId, commentId: { in: commentIds } },
       select: { commentId: true },
     }),
   ]);
@@ -63,13 +64,57 @@ const attachViewerCommentInteractions = async (comments, viewerId) => {
   const replied = new Set(replies.map((x) => x.commentId));
 
   return comments.map((c) => ({
-    ...c,
+    ...flatten(c),
     viewerActions: {
       hasLiked:   liked.has(c.id),
       hasReplied: replied.has(c.id),
     },
   }));
 };
+// const attachViewerCommentInteractions = async (comments, viewerId) => {
+//   if (!viewerId || comments.length === 0) {
+//     return comments.map((c) => ({
+//       ...c,
+//       viewerActions: {
+//         hasLiked:   false,
+//         hasReplied: false,
+//       },
+//     }));
+//   }
+
+//   const commentIds = comments.map((c) => c.id);
+
+//   const [likes, replies] = await Promise.all([
+//     // Comments the viewer has liked
+//     prisma.commentLike.findMany({
+//       where: {
+//         userId:    viewerId,
+//         commentId: { in: commentIds },
+//       },
+//       select: { commentId: true },
+//     }),
+
+//     // Comments the viewer has replied to
+//     prisma.reply.findMany({
+//       where: {
+//         userId:    viewerId,
+//         commentId: { in: commentIds },
+//       },
+//       select: { commentId: true },
+//     }),
+//   ]);
+
+//   const liked   = new Set(likes.map((x) => x.commentId));
+//   const replied = new Set(replies.map((x) => x.commentId));
+
+//   return comments.map((c) => ({
+//     ...c,
+//     viewerActions: {
+//       hasLiked:   liked.has(c.id),
+//       hasReplied: replied.has(c.id),
+//     },
+//   }));
+// };
 
 const commentService = {
 
