@@ -130,8 +130,7 @@ const commentController = {
     try {
       const { reelId } = req.params;
       const { text }   = req.body;
-      const userId     = req.user?.id; // ✅ safe access
-
+      const userId = req.user?.userId; // ✅ matches what middleware sets
       // Guard: auth middleware must have set req.user
       if (!userId) {
         return res.status(401).json({ success: false, message: 'Unauthorized.' });
