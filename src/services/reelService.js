@@ -7,27 +7,19 @@ import { uploadMediaToGCS } from '../config/multer.js';
 // =========================================================
 const REEL_WITH_REVIEWS = {
   category: {
-    select: {
-      id:    true,
-      title: true,
-    },
+    select: { id: true, title: true },
   },
-  // comments block intentionally removed — fetched on-demand via comment icon tap
   ratings: {
     include: {
-      user: {
-        select: {
-          id:       true,
-          fullname: true,
-        },
-      },
+      user: { select: { id: true, fullname: true } },
     },
   },
   _count: {
     select: {
       views:    true,
-      comments: true, // keep the COUNT so stats.comments still works
+      comments: true,
       ratings:  true,
+      likes:    true, // ✅ add this
     },
   },
 };
@@ -52,6 +44,8 @@ const REEL_WITH_PLAYER_AND_REVIEWS = {
     },
   },
 };
+
+
 
 // =========================================================
 // 🔹 Compute average rating
@@ -82,9 +76,7 @@ const computeAge = (dob) => {
 const formatReel = (r) => ({
   ...r,
   averageRating: avgRating(r.ratings),
-  category: r.category
-    ? { id: r.category.id, title: r.category.title }
-    : null,
+  category: r.category ? { id: r.category.id, title: r.category.title } : null,
   player: r.player
     ? {
         id:        r.player.id,
@@ -98,7 +90,8 @@ const formatReel = (r) => ({
   stats: {
     views:    r._count.views,
     comments: r._count.comments,
-    likes:    r._count.ratings,
+    ratings:  r._count.ratings,
+    likes:    r._count.likes, // ✅ add this (was wrongly mapped to ratings before)
   },
 });
 
