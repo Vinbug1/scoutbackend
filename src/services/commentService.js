@@ -14,7 +14,10 @@ const COMMENT_SELECT = {
     },
   },
   _count: {
-    select: { replies: true }, // shows "View X replies" count — no reply data fetched
+    select: {
+      replies: true, // existing
+      likes:   true, // ✅ add this
+    },
   },
 };
 
