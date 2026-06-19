@@ -1,4 +1,5 @@
 import profileService from '../services/profileService.js';
+import fs from 'fs';
 
 const ProfileController = {
 
@@ -52,13 +53,27 @@ const ProfileController = {
   // ✅ PLAYER only - upload their own avatar
   async uploadAvatar(req, res) {
     try {
-      const userId = req.user.userId; // ✅ from JWT
+      const userId = req.user.userId;
 
-      const avatarUrl = await profileService.uploadAvatar(userId, req.file);
-      res.status(200).json({ message: 'Avatar uploaded successfully', avatarUrl });
+      // req.file now comes from diskStorage — has .path, not .buffer
+      const result = await ProfileService.uploadAvatar(userId, req.file);
+      res.status(200).json(result);
     } catch (err) {
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
+    } finally {
+      // ✅ Always clean up the temp disk file multer wrote, regardless of success/failure
+      if (req.file?.path) {
+        fs.unlink(req.file.path, () => {});
+      }
     }
+    // try {
+    //   const userId = req.user.userId; // ✅ from JWT
+
+    //   const avatarUrl = await profileService.uploadAvatar(userId, req.file);
+    //   res.status(200).json({ message: 'Avatar uploaded successfully', avatarUrl });
+    // } catch (err) {
+    //   res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
+    // }
   },
 };
 

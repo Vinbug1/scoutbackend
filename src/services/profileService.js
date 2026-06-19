@@ -1,5 +1,10 @@
 import prisma from '../lib/prisma.js';
 import { uploadMediaToGCS } from '../config/multer.js';
+import { Storage } from '@google-cloud/storage';
+
+// ✅ bucket instance for old avatar cleanup
+const storage = new Storage();
+const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
 
 const profileService = {
 
@@ -98,24 +103,72 @@ const profileService = {
     await prisma.profile.delete({ where: { userId } }); // ✅ userId
   },
 
+
   // =========================
   // UPLOAD AVATAR
   // =========================
   async uploadAvatar(userId, file) {
-    if (!file) throw { status: 400, message: 'No image file provided' };
+    if (!file) {
+      throw { status: 400, message: 'No image file provided' };
+    }
 
+    // avatars must be images only
+    if (!file.mimetype?.startsWith('image/')) {
+      throw { status: 400, message: 'Avatar must be an image' };
+    }
+
+    // check profile exists
     const existing = await prisma.profile.findUnique({ where: { userId } });
-    if (!existing) throw { status: 404, message: 'Profile not found' };
+    if (!existing) {
+      throw { status: 404, message: 'Scout profile not found' };
+    }
 
+    // ✅ upload new avatar to GCS
+    // file is a diskStorage object — has .path and .mimetype, which uploadMediaToGCS expects
     const uploaded = await uploadMediaToGCS(file, 'avatars');
 
-    const profile = await prisma.profile.update({
+    // ✅ delete old avatar from GCS to avoid storage leaks
+    if (existing.avatarUrl) {
+      try {
+        const oldPath = existing.avatarUrl.split('.com/')[1];
+        if (oldPath) {
+          await bucket.file(oldPath).delete().catch(() => {});
+        }
+      } catch (_) {
+        // non-critical — log and continue
+      }
+    }
+
+    // update DB with new avatar URL
+    const updated = await prisma.profile.update({
       where: { userId },
       data: { avatarUrl: uploaded.url },
     });
 
-    return profile.avatarUrl;
+    return {
+      message: 'Avatar uploaded successfully',
+      avatarUrl: updated.avatarUrl,
+    };
   },
+
+  // // =========================
+  // // UPLOAD AVATAR
+  // // =========================
+  // async uploadAvatar(userId, file) {
+  //   if (!file) throw { status: 400, message: 'No image file provided' };
+
+  //   const existing = await prisma.profile.findUnique({ where: { userId } });
+  //   if (!existing) throw { status: 404, message: 'Profile not found' };
+
+  //   const uploaded = await uploadMediaToGCS(file, 'avatars');
+
+  //   const profile = await prisma.profile.update({
+  //     where: { userId },
+  //     data: { avatarUrl: uploaded.url },
+  //   });
+
+  //   return profile.avatarUrl;
+  // },
 };
 
 export default profileService;
