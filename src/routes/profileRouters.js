@@ -1,10 +1,9 @@
 import express from 'express';
-import multer from 'multer';
+import { upload } from '../config/multer.js';
 import profileController from '../controllers/profileController.js';
 import { verifyToken as authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @swagger
