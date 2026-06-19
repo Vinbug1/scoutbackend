@@ -33,7 +33,7 @@ const REEL_WITH_PLAYER_AND_REVIEWS = {
     select: {
       id:       true,
       fullname: true,
-      Profile: {        // ✅ fixed: was `profile`
+      profile: {        // ✅ fixed: was `profile`
         select: {
           avatarUrl: true,
           position:  true,
@@ -79,10 +79,10 @@ const formatReel = (r) => ({
     ? {
         id:        r.player.id,
         fullname:  r.player.fullname,
-        avatarUrl: r.player.Profile?.avatarUrl ?? null,  // ✅ fixed: was r.player.profile
-        position:  r.player.Profile?.position  ?? null,  // ✅ fixed
-        country:   r.player.Profile?.country   ?? null,  // ✅ fixed
-        age:       computeAge(r.player.Profile?.dob),    // ✅ fixed
+        avatarUrl: r.player.profile?.avatarUrl ?? null,  // ✅ fixed: was r.player.profile
+        position:  r.player.profile?.position  ?? null,  // ✅ fixed
+        country:   r.player.profile?.country   ?? null,  // ✅ fixed
+        age:       computeAge(r.player.profile?.dob),    // ✅ fixed
       }
     : null,
   stats: {
