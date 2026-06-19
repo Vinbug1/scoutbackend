@@ -8,7 +8,6 @@ import reelController from '../controllers/reelController.js';
 
 const {  handleReelUpload,  handleGetUserReels, handleGetReel,handleGetReelsByCategory} = reelController;
 
-
 import { verifyToken as protect } from '../middleware/auth.js';
 
 const router = Router();
