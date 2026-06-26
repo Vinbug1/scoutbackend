@@ -355,6 +355,61 @@ const userService = {
     if (!user) throw { status: 404, message: 'User not found' };
     await prisma.user.delete({ where: { id } });
   },
+
+  // ===========================
+  // PLAYERS
+  // ===========================
+  async getAllPlayers() {
+    return prisma.user.findMany({
+      where: { role: 'PLAYER' },
+      select: {
+        id: true,
+        email: true,
+        fullname: true,
+        role: true,
+        createdAt: true,
+        profile: true,
+        _count: {
+          select: {
+            posts: true,
+            followers: true,
+            following: true,
+            videos: true,
+          },
+        },
+      },
+    });
+  },
+
+  async getPlayerById(id) {
+    const player = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        fullname: true,
+        role: true,
+        createdAt: true,
+        profile: true,
+        videos: true,
+        posts: true,
+        _count: {
+          select: {
+            followers: true,
+            following: true,
+            videos: true,
+            posts: true,
+            comments: true,
+          },
+        },
+      },
+    });
+
+    if (!player) throw { status: 404, message: 'Player not found' };
+    if (player.role !== 'PLAYER') throw { status: 403, message: 'User is not a player' };
+
+    return player;
+  },
 };
 
 export default userService;
