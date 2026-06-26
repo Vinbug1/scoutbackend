@@ -496,6 +496,64 @@ router.put('/:id', authenticate, authorizeRoles('ADMIN'), userController.updateU
  */
 router.delete('/:id', authenticate, authorizeRoles('ADMIN'), userController.deleteUser);
 
+/**
+ * @swagger
+ * /users/players:
+ *   get:
+ *     summary: Get all players
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all users with role PLAYER
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/players', authenticate, userController.getAllPlayers);
+
+/**
+ * @swagger
+ * /users/players/{id}:
+ *   get:
+ *     summary: Get a player by ID
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *         description: The ID of the player to retrieve
+ *     responses:
+ *       200:
+ *         description: Player details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Invalid player ID
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: User exists but is not a player
+ *       404:
+ *         description: Player not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/players/:id', authenticate, userController.getPlayerById);
+
 export default router;
 
 

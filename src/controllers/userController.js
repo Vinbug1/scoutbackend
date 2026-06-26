@@ -143,6 +143,30 @@ const UserController = {
       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
     }
   },
+
+  // ===========================
+  // PLAYERS
+  // ===========================
+  async getAllPlayers(req, res) {
+    try {
+      const players = await userService.getAllPlayers();
+      res.status(200).json(players);
+    } catch (err) {
+      res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+    }
+  },
+
+  async getPlayerById(req, res) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: 'Invalid player ID' });
+
+      const player = await userService.getPlayerById(id);
+      res.status(200).json(player);
+    } catch (err) {
+      res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+    }
+  },
 };
 
 export default UserController;
