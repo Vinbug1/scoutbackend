@@ -151,24 +151,7 @@ const profileService = {
     };
   },
 
-  // // =========================
-  // // UPLOAD AVATAR
-  // // =========================
-  // async uploadAvatar(userId, file) {
-  //   if (!file) throw { status: 400, message: 'No image file provided' };
-
-  //   const existing = await prisma.profile.findUnique({ where: { userId } });
-  //   if (!existing) throw { status: 404, message: 'Profile not found' };
-
-  //   const uploaded = await uploadMediaToGCS(file, 'avatars');
-
-  //   const profile = await prisma.profile.update({
-  //     where: { userId },
-  //     data: { avatarUrl: uploaded.url },
-  //   });
-
-  //   return profile.avatarUrl;
-  // },
+  
 };
 
 export default profileService;
