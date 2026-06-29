@@ -84,7 +84,7 @@ const ProfileController = {
     }
 
     // update DB with new avatar URL
-    const updated = await prisma.scoutProfile.update({
+    const updated = await prisma.profile.update({
       where: { userId },
       data: { avatarUrl: uploaded.url },
     });
