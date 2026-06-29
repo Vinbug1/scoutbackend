@@ -137,7 +137,8 @@ const router = express.Router();
 // PUBLIC ROUTES
 // ========================================
 
-/** @swagger
+/**
+ * @swagger
  * /users/register:
  *   post:
  *     summary: Register a new user
