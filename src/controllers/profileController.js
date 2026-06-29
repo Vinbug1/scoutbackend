@@ -51,29 +51,48 @@ const ProfileController = {
   },
 
   // ✅ PLAYER only - upload their own avatar
-  async uploadAvatar(req, res) {
-    try {
-      const userId = req.user.userId;
+  async uploadAvatar(userId, file) {
+    if (!file) {
+      throw { status: 400, message: 'No image file provided' };
+    }
 
-      // req.file now comes from diskStorage — has .path, not .buffer
-      const result = await ProfileService.uploadAvatar(userId, req.file);
-      res.status(200).json(result);
-    } catch (err) {
-      res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
-    } finally {
-      // ✅ Always clean up the temp disk file multer wrote, regardless of success/failure
-      if (req.file?.path) {
-        fs.unlink(req.file.path, () => {});
+    // avatars must be images only
+    if (!file.mimetype?.startsWith('image/')) {
+      throw { status: 400, message: 'Avatar must be an image' };
+    }
+
+    // check profile exists
+    const existing = await prisma.profile.findUnique({ where: { userId } });
+    if (!existing) {
+      throw { status: 404, message: 'Scout profile not found' };
+    }
+
+    // ✅ upload new avatar to GCS
+    // file is a diskStorage object — has .path and .mimetype, which uploadMediaToGCS expects
+    const uploaded = await uploadMediaToGCS(file, 'avatars');
+
+    // ✅ delete old avatar from GCS to avoid storage leaks
+    if (existing.avatarUrl) {
+      try {
+        const oldPath = existing.avatarUrl.split('.com/')[1];
+        if (oldPath) {
+          await bucket.file(oldPath).delete().catch(() => {});
+        }
+      } catch (_) {
+        // non-critical — log and continue
       }
     }
-    // try {
-    //   const userId = req.user.userId; // ✅ from JWT
 
-    //   const avatarUrl = await profileService.uploadAvatar(userId, req.file);
-    //   res.status(200).json({ message: 'Avatar uploaded successfully', avatarUrl });
-    // } catch (err) {
-    //   res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
-    // }
+    // update DB with new avatar URL
+    const updated = await prisma.scoutProfile.update({
+      where: { userId },
+      data: { avatarUrl: uploaded.url },
+    });
+
+    return {
+      message: 'Avatar uploaded successfully',
+      avatarUrl: updated.avatarUrl,
+    };
   },
 };
 
