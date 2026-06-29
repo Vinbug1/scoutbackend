@@ -53,20 +53,37 @@ const ScoutProfileController = {
   // ✅ SCOUT only - upload their own avatar
   async uploadAvatar(req, res) {
     try {
-      const userId = req.user.userId;
-
-      // req.file now comes from diskStorage — has .path, not .buffer
+      const userId = req.user.id ?? req.user.userId; // ✅ handle both
+      
+      console.log('🔍 uploadAvatar userId:', userId, 'user:', req.user); // temp debug
+      
       const result = await scoutProfileService.uploadAvatar(userId, req.file);
       res.status(200).json(result);
     } catch (err) {
+      console.error('❌ uploadAvatar error:', err); // ✅ add this so you can see what's failing
       res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
     } finally {
-      // ✅ Always clean up the temp disk file multer wrote, regardless of success/failure
       if (req.file?.path) {
         fs.unlink(req.file.path, () => {});
       }
     }
   },
+  // async uploadAvatar(req, res) {
+  //   try {
+  //     const userId = req.user.userId;
+
+  //     // req.file now comes from diskStorage — has .path, not .buffer
+  //     const result = await scoutProfileService.uploadAvatar(userId, req.file);
+  //     res.status(200).json(result);
+  //   } catch (err) {
+  //     res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to upload avatar' });
+  //   } finally {
+  //     // ✅ Always clean up the temp disk file multer wrote, regardless of success/failure
+  //     if (req.file?.path) {
+  //       fs.unlink(req.file.path, () => {});
+  //     }
+  //   }
+  // },
 };
 
 export default ScoutProfileController;
