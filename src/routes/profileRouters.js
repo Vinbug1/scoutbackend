@@ -1,7 +1,7 @@
 import express from 'express';
 import { upload } from '../config/multer.js';
 import profileController from '../controllers/profileController.js';
-import { verifyToken as authenticate } from '../middleware/auth.js';
+import { verifyToken as authenticate, authorizeRoles } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -89,7 +89,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/profiles/avatar:
+ * /profiles/avatar:
  *   post:
  *     summary: Upload or update profile avatar
  *     tags: [Profiles]
@@ -126,7 +126,7 @@ const router = express.Router();
  *         description: Server error
  */
 // ⚠️ Must be declared BEFORE /:id to avoid Express matching "avatar" as an id param
-router.post('/avatar', authenticate, upload.single('avatar'), profileController.uploadAvatar);
+router.post('/avatar', authenticate, authorizeRoles('PLAYER'),upload.single('avatar'), profileController.uploadAvatar);
 
 
 /**

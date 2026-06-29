@@ -120,7 +120,7 @@ const profileService = {
     // check profile exists
     const existing = await prisma.profile.findUnique({ where: { userId } });
     if (!existing) {
-      throw { status: 404, message: 'Scout profile not found' };
+      throw { status: 404, message: 'Player profile not found' };
     }
 
     // ✅ upload new avatar to GCS
