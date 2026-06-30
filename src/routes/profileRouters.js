@@ -244,7 +244,7 @@ router.get('/:id', profileController.getProfileById);
  *       500:
  *         description: Server error
  */
-router.put('/me', profileController.updateProfile);
+router.put('/me',  authenticate, authorizeRoles('PLAYER'), profileController.updateProfile);
 
 /**
  * @swagger
@@ -267,7 +267,7 @@ router.put('/me', profileController.updateProfile);
  *       500:
  *         description: Server error
  */
-router.delete('/:id', profileController.deleteProfile);
+router.delete('/:id', authenticate, authorizeRoles('PLAYER'), profileController.deleteProfile);
 
 export default router;
 
