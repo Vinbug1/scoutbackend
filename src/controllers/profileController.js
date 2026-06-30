@@ -29,14 +29,34 @@ const ProfileController = {
   // ✅ PLAYER only - can only update their own profile
   async updateProfile(req, res) {
     try {
-      const userId = req.user.userId; // ✅ from JWT, not route param
-
+      console.log("JWT User:", req.user);
+      console.log("Body:", req.body);
+  
+      const userId = req.user.userId;
+  
       const profile = await profileService.update(userId, req.body);
-      res.status(200).json({ message: 'Profile updated successfully', data: profile });
+  
+      res.status(200).json({
+        message: "Profile updated successfully",
+        data: profile,
+      });
     } catch (err) {
-      res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to update profile' });
+      console.error(err);
+      res.status(err.status ?? 500).json({
+        error: err.message ?? "Failed to update profile",
+      });
     }
   },
+  // async updateProfile(req, res) {
+  //   try {
+  //     const userId = req.user.userId; // ✅ from JWT, not route param
+
+  //     const profile = await profileService.update(userId, req.body);
+  //     res.status(200).json({ message: 'Profile updated successfully', data: profile });
+  //   } catch (err) {
+  //     res.status(err.status ?? 500).json({ error: err.message ?? 'Failed to update profile' });
+  //   }
+  // },
 
   // ✅ PLAYER only - can only delete their own profile
   async deleteProfile(req, res) {

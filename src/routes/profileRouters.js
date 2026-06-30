@@ -244,7 +244,7 @@ router.get('/:id', profileController.getProfileById);
  *       500:
  *         description: Server error
  */
-router.put('/:id', profileController.updateProfile);
+router.put('/me', profileController.updateProfile);
 
 /**
  * @swagger
