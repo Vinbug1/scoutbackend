@@ -103,7 +103,6 @@ const profileService = {
     await prisma.profile.delete({ where: { userId } }); // ✅ userId
   },
 
-
   // =========================
   // UPLOAD AVATAR
   // =========================
@@ -151,7 +150,6 @@ const profileService = {
     };
   },
 
-  
 };
 
 export default profileService;
