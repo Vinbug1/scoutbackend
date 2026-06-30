@@ -91,7 +91,7 @@ const router = express.Router();
  * @swagger
  * /profiles/avatar:
  *   post:
- *     summary: Upload or update profile avatar
+ *     summary: Upload or update the authenticated player's avatar
  *     tags: [Profiles]
  *     security:
  *       - bearerAuth: []
@@ -101,11 +101,13 @@ const router = express.Router();
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [avatar]
+ *             required:
+ *               - avatar
  *             properties:
  *               avatar:
  *                 type: string
  *                 format: binary
+ *                 description: Avatar image file
  *     responses:
  *       200:
  *         description: Avatar uploaded successfully
@@ -114,16 +116,20 @@ const router = express.Router();
  *             schema:
  *               type: object
  *               properties:
- *                 message:   { type: string }
- *                 avatarUrl: { type: string }
+ *                 message:
+ *                   type: string
+ *                 avatarUrl:
+ *                   type: string
  *       400:
- *         description: No image file provided
+ *         description: No image file provided or invalid image
  *       401:
- *         description: Not authenticated
+ *         description: Invalid or missing authentication token
+ *       403:
+ *         description: Access denied. Only players can upload avatars.
  *       404:
- *         description: Profile not found
+ *         description: Player profile not found
  *       500:
- *         description: Server error
+ *         description: Internal server error
  */
 // ⚠️ Must be declared BEFORE /:id to avoid Express matching "avatar" as an id param
 router.post('/avatar', authenticate, authorizeRoles('PLAYER'),upload.single('avatar'), profileController.uploadAvatar);
