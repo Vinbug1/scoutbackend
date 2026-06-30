@@ -58,7 +58,7 @@ const ProfileController = {
       
       console.log('🔍 uploadAvatar userId:', userId, 'user:', req.user); // temp debug
       
-      const result = await scoutProfileService.uploadAvatar(userId, req.file);
+      const result = await profileService.uploadAvatar(userId, req.file);
       res.status(200).json(result);
     } catch (err) {
       console.error('❌ uploadAvatar error:', err); // ✅ add this so you can see what's failing

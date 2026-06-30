@@ -128,7 +128,6 @@ const router = express.Router();
 // ⚠️ Must be declared BEFORE /:id to avoid Express matching "avatar" as an id param
 router.post('/avatar', authenticate, authorizeRoles('PLAYER'),upload.single('avatar'), profileController.uploadAvatar);
 
-
 /**
  * @swagger
  * /api/profiles:
