@@ -1324,7 +1324,7 @@ router.get('/:reelId/likes/count', commentLikeController.getReelLikesCount);
  *                   type: string
  *                   example: Failed to record view.
  */
-router.post('/reels/:reelId/view', protect, reelController.handleRecordReelView);
+router.post('/:reelId/view', protect, reelController.handleRecordReelView);
 
 
 export default router;
