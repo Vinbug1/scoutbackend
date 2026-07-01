@@ -277,7 +277,6 @@ model ReelView {
   reel Reel  @relation(fields: [reelId], references: [id])
   user User? @relation(fields: [userId], references: [id])
 
-  @@unique([reelId, userId], name: "unique_reel_view_per_user")
   @@index([reelId])
   @@index([userId])
 }
