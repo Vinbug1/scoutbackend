@@ -8,6 +8,7 @@ import {
   getReelsByUser,
   getReelById,
   getReelsByCategory,
+  recordReelView,
 } from '../services/reelService.js';
 
 const reelController = {
