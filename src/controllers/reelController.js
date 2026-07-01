@@ -475,14 +475,11 @@ async handleRecordReelView(req, res) {
     });
 
   } catch (err) {
-
     console.error('❌ handleRecordReelView:', err);
-
     return res.status(err.statusCode || 500).json({
       success: false,
       message: err.message || 'Failed to record view.',
     });
-
   }
 },
 

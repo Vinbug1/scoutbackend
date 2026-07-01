@@ -390,26 +390,15 @@ export const recordReelView = async (reelId, viewerId = null, ipHash = null) => 
     throw Object.assign(new Error('Reel not found.'), { statusCode: 404 });
   }
 
-  let counted = true;
+  await prisma.reelView.create({
+    data: { reelId, userId: viewerId, ipHash },
+  });
 
-  try {
-    await prisma.reelView.create({
-      data: { reelId, userId: viewerId, ipHash },
-    });
-  } catch (err) {
-    if (err.code === 'P2002') {
-      // duplicate — this logged-in user already has a view on record
-      counted = false;
-    } else {
-      throw err;
-    }
-  }
-
-  const viewCount = await prisma.reel.findUnique({
+  const { _count } = await prisma.reel.findUnique({
     where:  { id: reelId },
     select: { _count: { select: { views: true } } },
-  }).then((r) => r._count.views);
+  });
 
-  return { counted, viewCount };
+  return { viewCount: _count.views };
 };
 
