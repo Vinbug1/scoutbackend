@@ -1241,7 +1241,90 @@ router.get('/:reelId/likes', protect, commentLikeController.getReelLikes);
  */
 router.get('/:reelId/likes/count', commentLikeController.getReelLikesCount);
 
-
+/**
+ * @swagger
+ * /api/reels/{reelId}/view:
+ *   post:
+ *     summary: Record a view for a reel
+ *     description: >
+ *       Increments the view count for a reel. If the request is made by an authenticated
+ *       user, the view is deduped per user (a user can only be counted once). Anonymous
+ *       requests are recorded using a hashed IP address. Returns the updated view count
+ *       and whether this specific request added a new view.
+ *     tags:
+ *       - Reels
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reelId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The ID of the reel being viewed.
+ *     responses:
+ *       200:
+ *         description: View recorded (or already counted for this user).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     counted:
+ *                       type: boolean
+ *                       description: True if this request added a new view; false if the user already had one recorded.
+ *                       example: true
+ *                     viewCount:
+ *                       type: integer
+ *                       description: The reel's total view count after this request.
+ *                       example: 42
+ *       400:
+ *         description: Invalid reel ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Invalid reel ID.
+ *       404:
+ *         description: Reel not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Reel not found.
+ *       500:
+ *         description: Server error while recording the view.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Failed to record view.
+ */
+router.post('/reels/:reelId/view', protect, reelController.handleRecordReelView);
 
 
 export default router;
