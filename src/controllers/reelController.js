@@ -441,6 +441,50 @@ const reelController = {
 
   },
 
+  // =========================================================
+// POST /api/reels/:reelId/view
+// =========================================================
+async handleRecordReelView(req, res) {
+  try {
+    const reelId = Number(req.params.reelId);
+
+    if (Number.isNaN(reelId) || reelId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid reel ID.',
+      });
+    }
+
+    const viewerId = req.user?.userId ?? null;
+
+    const rawIp =
+      req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+      req.ip ||
+      '';
+
+    const ipHash = rawIp
+      ? Buffer.from(rawIp).toString('base64').slice(0, 32)
+      : null;
+
+    const result = await recordReelView(reelId, viewerId, ipHash);
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+
+  } catch (err) {
+
+    console.error('❌ handleRecordReelView:', err);
+
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || 'Failed to record view.',
+    });
+
+  }
+},
+
 };
 
 export default reelController;

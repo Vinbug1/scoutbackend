@@ -316,12 +316,6 @@ export const updateReelStatus = async (reelId, { status, videoUrl, thumbnailUrl,
 // =========================================================
 // 🔹 Fetch all reels for a given player (with full player info)
 // =========================================================
-// =========================================================
-// 🔹 Fetch all reels for a given player (with player, comments, likes)
-// =========================================================
-// =========================================================
-// 🔹 Fetch all reels for a given player (with player, comments, likes)
-// =========================================================
 export const getReelsByUser = async (playerId, categoryId = null, viewerId = null) => {
   const reels = await prisma.reel.findMany({
     where: {
@@ -335,29 +329,12 @@ export const getReelsByUser = async (playerId, categoryId = null, viewerId = nul
   const formatted = reels.map(formatReel);
   return attachViewerInteractions(formatted, viewerId);
 };
-// export const getReelsByUser = async (playerId, categoryId = null, viewerId = null) => {
-//   const reels = await prisma.reel.findMany({
-//     where: {
-//       playerId,
-//       ...(categoryId ? { categoryId } : {}),
-//     },
-//     orderBy: { createdAt: 'desc' },
-//     include: REEL_WITH_PLAYER_AND_REVIEWS,
-//   });
-
-//   const formatted = reels.map(formatReel);
-//   return attachViewerInteractions(formatted, viewerId);
-// };
 
 // =========================================================
 // 🔹 Fetch a single reel by ID (with full player info)
 // =========================================================
 export const getReelById = async (reelId, viewerId = null, ipHash = null) => {
-  try {
-    await prisma.reelView.create({
-      data: { reelId, userId: viewerId, ipHash },
-    });
-  } catch { /* duplicate view – skip */ }
+  await recordReelView(reelId, viewerId, ipHash).catch(() => {});
 
   const reel = await prisma.reel.findUniqueOrThrow({
     where:   { id: reelId },
@@ -367,6 +344,21 @@ export const getReelById = async (reelId, viewerId = null, ipHash = null) => {
   const [result] = await attachViewerInteractions([formatReel(reel)], viewerId);
   return result;
 };
+// export const getReelById = async (reelId, viewerId = null, ipHash = null) => {
+//   try {
+//     await prisma.reelView.create({
+//       data: { reelId, userId: viewerId, ipHash },
+//     });
+//   } catch { /* duplicate view – skip */ }
+
+//   const reel = await prisma.reel.findUniqueOrThrow({
+//     where:   { id: reelId },
+//     include: REEL_WITH_PLAYER_AND_REVIEWS,
+//   });
+
+//   const [result] = await attachViewerInteractions([formatReel(reel)], viewerId);
+//   return result;
+// };
 
 // =========================================================
 // 🔹 Fetch all published reels by category (with full player info)
@@ -383,5 +375,41 @@ export const getReelsByCategory = async (categoryId, viewerId = null) => {
 
   const formatted = reels.map(formatReel);
   return attachViewerInteractions(formatted, viewerId);
+};
+
+// =========================================================
+// 🔹 Record a view for a reel (idempotent per logged-in user)
+// =========================================================
+export const recordReelView = async (reelId, viewerId = null, ipHash = null) => {
+  const reel = await prisma.reel.findUnique({
+    where:  { id: reelId },
+    select: { id: true },
+  });
+
+  if (!reel) {
+    throw Object.assign(new Error('Reel not found.'), { statusCode: 404 });
+  }
+
+  let counted = true;
+
+  try {
+    await prisma.reelView.create({
+      data: { reelId, userId: viewerId, ipHash },
+    });
+  } catch (err) {
+    if (err.code === 'P2002') {
+      // duplicate — this logged-in user already has a view on record
+      counted = false;
+    } else {
+      throw err;
+    }
+  }
+
+  const viewCount = await prisma.reel.findUnique({
+    where:  { id: reelId },
+    select: { _count: { select: { views: true } } },
+  }).then((r) => r._count.views);
+
+  return { counted, viewCount };
 };
 
