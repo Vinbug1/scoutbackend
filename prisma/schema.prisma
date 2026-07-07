@@ -36,6 +36,24 @@ enum Recommendation {
   NOT_SUITABLE
 }
 
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum ChatRoomType {
+  DIRECT
+  GROUP
+}
+
 // ─────────────────────────────────────────────
 // User
 // ─────────────────────────────────────────────
@@ -75,13 +93,22 @@ model User {
   // Scout reports
   reportsFiled      ScouterReport[]        @relation("ReportsByScouter")
   reportsAboutMe    ScouterReport[]        @relation("ReportsAboutPlayer")
-
+  createdChatRooms ChatRoom[] @relation("ChatRoomCreator")
   payments          Payment[]
   rankings          Ranking[]
   chatMessages      ChatMessage[]
   chatRoomMembers   ChatRoomMember[]
   challengesCreated Challenge[]            @relation("ChallengeCreator")
   challengesJoined  ChallengeParticipant[]
+
+  pushToken   String?
+  isOnline    Boolean   @default(false)
+  lastSeenAt  DateTime?
+  blocksMade  Block[]   @relation("BlockedBy")
+  blocksTaken Block[]   @relation("BlockedUser")
+  reportsMade Report[]  @relation("ReportedBy")
+   messageReads     MessageRead[]
+  reportsAgainstMe Report[]        @relation("ReportedUser")
 }
 
 // ─────────────────────────────────────────────
@@ -384,6 +411,7 @@ model Rating {
   user  User   @relation(fields: [userId], references: [id])
 
   @@unique([videoId, userId])
+  @@unique([reelId, userId])
   @@index([videoId])
   @@index([reelId])
 }
@@ -507,36 +535,134 @@ model ProgressLog {
 // Chat
 // ─────────────────────────────────────────────
 
+
 model ChatRoom {
-  id        Int              @id @default(autoincrement())
-  name      String?
-  createdAt DateTime         @default(now())
-  messages  ChatMessage[]
-  members   ChatRoomMember[]
+  id    Int          @id @default(autoincrement())
+  type  ChatRoomType @default(DIRECT)
+  name  String?
+
+  creatorId Int?
+  creator   User? @relation("ChatRoomCreator", fields: [creatorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lastMessageId Int?         @unique
+  lastMessage   ChatMessage? @relation("LastMessage", fields: [lastMessageId], references: [id], onDelete: SetNull)
+
+  directKey String? @unique   // ← new: dedup key for DIRECT rooms
+
+  messages ChatMessage[]    @relation("RoomMessages")
+  members  ChatRoomMember[]
+
+  @@index([type])
+  @@index([updatedAt])
 }
 
-model ChatMessage {
-  id      Int      @id @default(autoincrement())
-  roomId  Int
-  userId  Int
-  message String
-  sentAt  DateTime @default(now())
+model ChatRoomMember {
+  id                Int       @id @default(autoincrement())
 
-  room ChatRoom @relation(fields: [roomId], references: [id])
-  user User     @relation(fields: [userId], references: [id])
+  roomId            Int
+  userId            Int
+
+  joinedAt          DateTime  @default(now())
+
+  unreadCount       Int       @default(0)
+
+  lastReadMessageId Int?
+
+  isBlockedByPeer   Boolean   @default(false)
+
+  room              ChatRoom  @relation(fields: [roomId], references: [id])
+  user              User      @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
 
   @@index([roomId])
   @@index([userId])
 }
 
-model ChatRoomMember {
-  id       Int      @id @default(autoincrement())
-  roomId   Int
-  userId   Int
-  joinedAt DateTime @default(now())
+model ChatMessage {
+  id            Int           @id @default(autoincrement())
 
-  room ChatRoom @relation(fields: [roomId], references: [id])
-  user User     @relation(fields: [userId], references: [id])
+  roomId        Int
+  userId        Int
 
-  @@unique([roomId, userId])
+  clientTempId  String?       @unique
+
+  type          MessageType   @default(TEXT)
+
+  text          String?
+
+  mediaUrl      String?
+  thumbnailUrl  String?
+
+  fileName      String?
+  fileSize      Int?
+  durationSec   Int?
+
+  status        MessageStatus @default(SENT)
+
+  sentAt        DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  editedAt      DateTime?
+  deletedAt     DateTime?
+
+  room          ChatRoom      @relation("RoomMessages", fields: [roomId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+  roomAsLast    ChatRoom?     @relation("LastMessage")
+
+  replyToId     Int?
+  replyTo       ChatMessage?  @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies       ChatMessage[] @relation("MessageReply")
+
+  reads         MessageRead[]
+  reports       Report[]
+
+  @@index([roomId, sentAt])
+  @@index([roomId, status])
+  @@index([replyToId])
+  @@index([status])
+  @@index([userId])
+
+}
+
+model MessageRead {
+  id        Int      @id @default(autoincrement())
+  messageId Int
+  userId    Int
+  readAt    DateTime @default(now())
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId])
+}
+
+model Block {
+  id          Int      @id @default(autoincrement())
+  blockerId   Int
+  blockedId   Int
+  createdAt   DateTime @default(now())
+
+  blocker User @relation("BlockedBy", fields: [blockerId], references: [id])
+  blocked User @relation("BlockedUser", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+}
+
+model Report {
+  id         Int      @id @default(autoincrement())
+  reporterId Int
+  reportedId Int
+  messageId  Int?
+  reason     String
+  createdAt  DateTime @default(now())
+
+  reporter User         @relation("ReportedBy", fields: [reporterId], references: [id])
+  reported User         @relation("ReportedUser", fields: [reportedId], references: [id])
+  message  ChatMessage? @relation(fields: [messageId], references: [id])
+
+  @@index([reportedId])
 }
