@@ -1,5 +1,5 @@
-import { redisClient } from '../config/redis.js';
-import prisma from '../lib/prisma.js';
+import { redisClient } from '../../config/redis.js';
+import prisma from '../../lib/prisma.js';
 
 // ⚠️ ASSUMPTION — this imports `../lib/redis.js` as a default-exported
 // client with an ioredis-style API (.set/.get/.sadd/.srem/.sismember).
