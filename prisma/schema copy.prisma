@@ -54,16 +54,6 @@ enum ChatRoomType {
   GROUP
 }
 
-// NEW — group membership management (spec §4.5) needs to distinguish
-// admins (can add/remove/promote members) from ordinary members. The
-// original schema had no role field at all, so every membership
-// endpoint in §4.5 (add member / remove member / change role) had
-// nothing to authorize against.
-enum ChatMemberRole {
-  MEMBER
-  ADMIN
-}
-
 // ─────────────────────────────────────────────
 // User
 // ─────────────────────────────────────────────
@@ -103,7 +93,7 @@ model User {
   // Scout reports
   reportsFiled      ScouterReport[]        @relation("ReportsByScouter")
   reportsAboutMe    ScouterReport[]        @relation("ReportsAboutPlayer")
-  createdChatRooms ChatRoom[]            @relation("ChatRoomCreator")
+  createdChatRooms ChatRoom[] @relation("ChatRoomCreator")
   payments          Payment[]
   rankings          Ranking[]
   chatMessages      ChatMessage[]
@@ -117,14 +107,8 @@ model User {
   blocksMade  Block[]   @relation("BlockedBy")
   blocksTaken Block[]   @relation("BlockedUser")
   reportsMade Report[]  @relation("ReportedBy")
-  messageReads             MessageRead[]
-  reportsAgainstMe         Report[]                 @relation("ReportedUser")
-
-  // NEW — needed by the two new tables added below (spec §6.2's "delete
-  // for me" and §11/§12's delivery receipts). Without these back-relations
-  // the new models can't have a `user User @relation(...)` field.
-  messageDeliveryReceipts  MessageDeliveryReceipt[]
-  messageDeletions         MessageDeletionForUser[]
+   messageReads     MessageRead[]
+  reportsAgainstMe Report[]        @relation("ReportedUser")
 }
 
 // ─────────────────────────────────────────────
@@ -549,16 +533,13 @@ model ProgressLog {
 
 // ─────────────────────────────────────────────
 // Chat
-//
-// Fixed against the technical spec. Key differences from the previous
-// version of this section are called out inline as comments; a full
-// summary is in the chat response, not repeated here.
 // ─────────────────────────────────────────────
 
+
 model ChatRoom {
-  id   Int          @id @default(autoincrement())
-  type ChatRoomType @default(DIRECT)
-  name String?
+  id    Int          @id @default(autoincrement())
+  type  ChatRoomType @default(DIRECT)
+  name  String?
 
   creatorId Int?
   creator   User? @relation("ChatRoomCreator", fields: [creatorId], references: [id])
@@ -566,184 +547,84 @@ model ChatRoom {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // NEW — monotonic per-room counter. Every ChatMessage.seq is assigned
-  // from this inside the SAME transaction as the message insert (spec
-  // §5.2). This is what makes pagination (§10.1) and unread counts
-  // (§7.2: seqCounter - lastReadSeq, computed not stored) correct.
-  // sentAt/updatedAt alone can't serve as a cursor: concurrent sends can
-  // land in the same millisecond or arrive out of order.
-  seqCounter Int @default(0)
+  lastMessageId Int?         @unique
+  lastMessage   ChatMessage? @relation("LastMessage", fields: [lastMessageId], references: [id], onDelete: SetNull)
 
-  directKey String? @unique // dedup key for DIRECT rooms: [userIdA, userIdB].sort().join(':')
+  directKey String? @unique   // ← new: dedup key for DIRECT rooms
 
   messages ChatMessage[]    @relation("RoomMessages")
   members  ChatRoomMember[]
-
-  // CHANGED — was a direct `lastMessageId Int? @unique` FK straight to
-  // ChatMessage. Replaced with a dedicated cache table (spec §7.1/§7.3)
-  // so the inbox list query never has to join ChatMessage (and its
-  // profile/media fields) just to render a preview string, and so
-  // `updatedAt` on the cache row can be indexed independently as the
-  // inbox pagination cursor.
-  lastMessage ChatLastMessage?
 
   @@index([type])
   @@index([updatedAt])
 }
 
 model ChatRoomMember {
-  id Int @id @default(autoincrement())
+  id                Int       @id @default(autoincrement())
 
-  roomId Int
-  userId Int
+  roomId            Int
+  userId            Int
 
-  joinedAt DateTime @default(now())
+  joinedAt          DateTime  @default(now())
 
-  // NEW — group membership management (spec §4.5) requires knowing who's
-  // an admin. Previously nothing on this model distinguished members
-  // from admins, so add/remove/promote endpoints had nothing to check.
-  role ChatMemberRole @default(MEMBER)
+  unreadCount       Int       @default(0)
 
-  // CHANGED — replaces `unreadCount Int @default(0)` and
-  // `lastReadMessageId Int?`. Per spec §7.2, unread count must be
-  // *computed* as `room.seqCounter - lastReadSeq`, never stored as its
-  // own counter: a stored counter can drift out of sync under retries,
-  // multi-device races, or partial failures, and there's no way to
-  // detect that it's wrong. lastReadSeq/lastDeliveredSeq also let
-  // message:read use the conditional-update guard from spec §5.2/14.27
-  // (`lastReadSeq: { lt: upToSeq }`) to stop a stale/out-of-order read
-  // event from moving read state backward — that guard doesn't work
-  // against a message-id pointer the way it works against a seq number.
-  lastReadSeq      Int @default(0)
-  lastDeliveredSeq Int @default(0)
+  lastReadMessageId Int?
 
-  // NEW — needed to enforce mute in the push-notification worker
-  // (spec §12: `if (mutedUntil && new Date(mutedUntil) > new Date()) continue;`).
-  // The old schema had no way to mute a room per-member at all.
-  mutedUntil DateTime?
+  isBlockedByPeer   Boolean   @default(false)
 
-  isBlockedByPeer Boolean @default(false)
-
-  room ChatRoom @relation(fields: [roomId], references: [id])
-  user User     @relation(fields: [userId], references: [id])
+  room              ChatRoom  @relation(fields: [roomId], references: [id])
+  user              User      @relation(fields: [userId], references: [id])
 
   @@unique([roomId, userId])
+
   @@index([roomId])
   @@index([userId])
 }
 
 model ChatMessage {
-  id Int @id @default(autoincrement())
+  id            Int           @id @default(autoincrement())
 
-  roomId Int
-  userId Int
+  roomId        Int
+  userId        Int
 
-  // NEW — the ordering/pagination/read-cursor key described above.
-  // Assigned as room.seqCounter incremented inside the create
-  // transaction (spec §5.2), never client-supplied.
-  seq Int
+  clientTempId  String?       @unique
 
-  clientTempId String?
+  type          MessageType   @default(TEXT)
 
-  type MessageType @default(TEXT)
+  text          String?
 
-  text String?
+  mediaUrl      String?
+  thumbnailUrl  String?
 
-  mediaUrl     String?
-  thumbnailUrl String?
+  fileName      String?
+  fileSize      Int?
+  durationSec   Int?
 
-  // NEW — spec §8.2 needs somewhere to record transcode/processing state
-  // (e.g. { processingStatus: "processing" | "ready" | "failed" }) so the
-  // transcode worker and its failure handler have a field to write to.
-  mediaMeta Json?
+  status        MessageStatus @default(SENT)
 
-  fileName    String?
-  fileSize    Int?
-  durationSec Int?
+  sentAt        DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  editedAt      DateTime?
+  deletedAt     DateTime?
 
-  status MessageStatus @default(SENT)
+  room          ChatRoom      @relation("RoomMessages", fields: [roomId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+  roomAsLast    ChatRoom?     @relation("LastMessage")
 
-  sentAt    DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  editedAt  DateTime?
-  deletedAt DateTime?
+  replyToId     Int?
+  replyTo       ChatMessage?  @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies       ChatMessage[] @relation("MessageReply")
 
-  room       ChatRoom         @relation("RoomMessages", fields: [roomId], references: [id])
-  user       User             @relation(fields: [userId], references: [id])
-  roomAsLast ChatLastMessage?
+  reads         MessageRead[]
+  reports       Report[]
 
-  replyToId Int?
-  // NOTE (spec §14.26 / §5.2): this FK is a data-integrity nicety only —
-  // it does NOT guarantee replyToId belongs to the same room. A message
-  // in room A can still have an id that's technically reachable as
-  // replyToId from room B. The application layer MUST verify
-  // `original.roomId === this.roomId` before trusting the reference and
-  // before snapshotting replyToPreview/replyToSenderId — otherwise this
-  // is a cross-room content leak the moment replyToPreview gets broadcast
-  // to room B's participants. A bad/mismatched replyToId should be
-  // silently dropped (send as a normal message), not fail the whole send.
-  replyTo         ChatMessage?  @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies         ChatMessage[] @relation("MessageReply")
-
-  // NEW — snapshotted at write time (after the same-room check above),
-  // so rendering a reply preview never requires re-fetching or re-joining
-  // the original message (which may since have been edited or deleted).
-  replyToPreview  String?
-  replyToSenderId Int?
-
-  reads             MessageRead[]
-  // NEW — spec §12 push-notification/delivery flow: a delivery ack is a
-  // distinct event from a read receipt (you can deliver to a device that
-  // hasn't opened the chat yet). The old schema only had MessageRead,
-  // with nothing recording "device received this" separately.
-  deliveryReceipts  MessageDeliveryReceipt[]
-  // NEW — spec §6.2 "delete for me": removing a message from just your
-  // own view without affecting other participants. The old schema only
-  // supported a single global `deletedAt` (delete for everyone) — there
-  // was no way to represent "hidden for user X only."
-  deletedFor        MessageDeletionForUser[]
-  reports           Report[]
-
-  // NEW — the pagination/ordering guarantee itself (spec §3 "Required
-  // indexes" table): keyset cursor and strict per-room ordering.
-  @@unique([roomId, seq])
-  // CHANGED — was a bare `clientTempId String? @unique` (global
-  // uniqueness across every room and every user). Scoping it to
-  // (roomId, userId, clientTempId) matches spec §3/§4.3: idempotent
-  // send-retry keys only need to be unique per sender per conversation,
-  // and global uniqueness is an unnecessary constraint that could reject
-  // a legitimate retry key reused (deliberately or by a buggy client)
-  // across unrelated rooms.
-  @@unique([roomId, userId, clientTempId])
   @@index([roomId, sentAt])
-  // NEW — spec §11.2 "edits/deletes since last seen" reconnect query
-  // (`updatedAt: { gt: since } `) needs this to not be a full table scan.
-  @@index([roomId, updatedAt])
   @@index([roomId, status])
   @@index([replyToId])
   @@index([status])
   @@index([userId])
-}
 
-// NEW MODEL — replaces the old direct `ChatRoom.lastMessageId` FK.
-// Decouples the inbox-list cache (cheap to read, indexed by updatedAt
-// for pagination per spec §7.3) from the live Message row, and lets
-// preview text be corrected in place on edit/delete (spec §7.5:
-// maybeUpdateInboxPreviewOnEdit/OnDelete) via a plain conditional
-// updateMany instead of re-resolving a nullable FK.
-model ChatLastMessage {
-  roomId Int      @id
-  room   ChatRoom @relation(fields: [roomId], references: [id])
-
-  messageId Int         @unique
-  message   ChatMessage @relation(fields: [messageId], references: [id])
-
-  senderId  Int?
-  seq       Int      @default(0)
-  preview   String?
-  updatedAt DateTime @updatedAt
-
-  @@index([updatedAt])
 }
 
 model MessageRead {
@@ -759,44 +640,11 @@ model MessageRead {
   @@index([userId])
 }
 
-// NEW MODEL — spec §3/§12: per-user, per-message delivery acknowledgement,
-// distinct from a read receipt. Backs the `message:delivered` handler
-// (spec §5.2) and lets computeStatus (spec §10.1) distinguish "delivered
-// but not read" from "read."
-model MessageDeliveryReceipt {
-  id          Int      @id @default(autoincrement())
-  messageId   Int
-  userId      Int
-  deliveredAt DateTime @default(now())
-
-  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([messageId, userId])
-  @@index([userId])
-}
-
-// NEW MODEL — spec §6.2 "delete for me": a message hidden for one
-// participant without being deleted for everyone else. getMessagePage
-// (spec §10.1) filters on `deletedFor: { none: { userId } }`.
-model MessageDeletionForUser {
-  id        Int      @id @default(autoincrement())
-  messageId Int
-  userId    Int
-  deletedAt DateTime @default(now())
-
-  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([messageId, userId])
-  @@index([userId])
-}
-
 model Block {
-  id        Int      @id @default(autoincrement())
-  blockerId Int
-  blockedId Int
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  blockerId   Int
+  blockedId   Int
+  createdAt   DateTime @default(now())
 
   blocker User @relation("BlockedBy", fields: [blockerId], references: [id])
   blocked User @relation("BlockedUser", fields: [blockedId], references: [id])
