@@ -1,4 +1,4 @@
-import { requireParticipant } from '../services/chatMessageService.js';
+import { requireParticipant } from '../../services/chatMessageService';
 
 // Typing indicators are low-stakes: if the membership check fails (bad
 // roomId, user isn't actually in the room), we just silently drop the
