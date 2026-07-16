@@ -1,71 +1,67 @@
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
-import { pubClient, subClient, connectRedis } from '../config/redis.js';
-import { socketAuthMiddleware } from './authMiddleware.js';
-import { markOnline, markSocketClosed } from './presence.js';
-import { registerTypingHandlers } from './handlers/typingHandlers.js';
+import redisClient from '../lib/redis.js';
+import authMiddleware from './authMiddleware.js';
+import registerMessageHandlers from './messageHandlers.js';
+import registerPresenceHandlers from './presenceHandlers.js';
+import registerTypingHandlers from './typingHandlers.js';
+import registerViewingHandlers from './viewingHandlers.js';
 
-// NOTE: There is no message:send / message:delivered / message:read
-// handler here on purpose. Your REST controllers (chatMessageController)
-// already own message writes — block checks, membership checks, and
-// unreadCount updates all happen there — and they emit the resulting
-// events themselves via req.app.get('io'). Sockets here only handle
-// what REST doesn't: room membership for broadcast delivery, typing,
-// and presence.
-
-let io;
-
-export async function initSocketServer(httpServer) {
-  await connectRedis();
-
-  io = new Server(httpServer, {
-    cors: { origin: '*' }, // tighten to your app's origin(s) in production
-    adapter: createAdapter(pubClient, subClient),
+// Call this once, right after you create your HTTP server — e.g.:
+//
+//   import http from 'http';
+//   import app from './app.js';
+//   import { initSocketServer } from './socket/index.js';
+//
+//   const httpServer = http.createServer(app);
+//   const io = initSocketServer(httpServer, allowedOrigins);
+//
+//   // IMPORTANT — every controller you already have
+//   // (chatMessageController.js, chatRoomController.js) calls
+//   // `req.app.get('io')` to broadcast after a REST-driven action. That
+//   // ONLY works if you do this:
+//   app.set('io', io);
+//
+//   httpServer.listen(PORT);
+//
+// Note it's httpServer.listen(...), not app.listen(...) — Socket.io
+// needs the raw http.Server instance to attach to, and app.listen()
+// under the hood just creates one for you anyway and throws it away.
+export function initSocketServer(httpServer, allowedOrigins) {
+  const io = new Server(httpServer, {
+    cors: { origin: allowedOrigins },
   });
 
-  io.use(socketAuthMiddleware);
+  // ⚠️ ASSUMPTION — redisClient here is assumed to be an ioredis
+  // instance (`.duplicate()` is ioredis-specific; node-redis's API
+  // differs — you'd construct two separate clients with createClient()
+  // instead). Confirm against whatever `../lib/redis.js` actually
+  // exports; your memory notes a Redis layer already exists in this
+  // codebase, so this is very likely already the right shape, but worth
+  // a quick check before wiring this in.
+  //
+  // No sticky sessions needed once this adapter is in place (spec
+  // §13.1) — it's what lets multiple server instances behind a load
+  // balancer share room membership and presence state correctly.
+  const pubClient = redisClient.duplicate();
+  const subClient = redisClient.duplicate();
+  io.adapter(createAdapter(pubClient, subClient));
 
-  io.on('connection', async (socket) => {
-    console.log(`🔌 Socket connected: user=${socket.userId} socket=${socket.id}`);
+  io.use(authMiddleware);
 
-    // Auto-join a per-user room so REST controllers can target this user
-    // directly: io.to(`user:${userId}`).emit('conversation:updated', ...)
-    socket.join(`user:${socket.userId}`);
+  io.on('connection', (socket) => {
+    // Every socket joins its own personal room on connect — this is
+    // where conversation:new, conversation:updated, and inbox-level
+    // events land, independent of which specific chat screen (if any)
+    // is currently open. See viewingHandlers.js for the distinction
+    // between this and `room:{roomId}`.
+    socket.join(`user:${socket.user.id}`);
 
-    await markOnline(socket.userId, socket.id);
-    io.emit('presence:changed', { userId: socket.userId, isOnline: true });
-
-    // Client joins a room to receive its message:new / message:statusUpdate
-    // / typing:update broadcasts. roomId must match ChatRoom.id.
-    socket.on('conversation:join', (roomId) => {
-      socket.join(`room:${roomId}`);
-    });
-
-    socket.on('conversation:leave', (roomId) => {
-      socket.leave(`room:${roomId}`);
-    });
-
+    registerMessageHandlers(io, socket);
+    registerPresenceHandlers(io, socket);
     registerTypingHandlers(io, socket);
-
-    socket.on('disconnect', async () => {
-      const { wentOffline, lastSeenAt } = await markSocketClosed(socket.userId, socket.id);
-      if (wentOffline) {
-        io.emit('presence:changed', {
-          userId: socket.userId,
-          isOnline: false,
-          lastSeenAt,
-        });
-      }
-      console.log(`🔌 Socket disconnected: user=${socket.userId} socket=${socket.id}`);
-    });
+    registerViewingHandlers(io, socket);
   });
 
-  return io;
-}
-
-// Fallback getter for any non-request code path (cron jobs, workers) that
-// needs to emit — request handlers should use req.app.get('io') instead.
-export function getIO() {
-  if (!io) throw new Error('Socket.io not initialized — call initSocketServer first');
   return io;
 }
