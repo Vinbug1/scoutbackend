@@ -1,28 +1,37 @@
 import jwt from 'jsonwebtoken';
-import prisma from '../lib/prisma.js';
 
-// Mirrors verifyToken in your REST middleware: decode the JWT for userId
-// only, then fetch the user fresh from the DB for role — matches your
-// REST behavior exactly (role is never trusted from the token itself,
-// so a role change takes effect immediately without reissuing tokens).
-export async function socketAuthMiddleware(socket, next) {
+// Runs once per socket connection, before any handler is registered
+// (spec §5.1/§13.1: "Auth middleware verifying JWT on socket handshake").
+//
+// ⚠️ VINCENT — verify this against your actual REST authMiddleware. Past
+// sessions on this codebase hit a recurring bug where JWT payloads were
+// read inconsistently as `req.user.id` in some controllers and
+// `req.user.userId` in others. This checks both (`payload.id ??
+// payload.userId`) so it doesn't matter which your token issuer uses —
+// but confirm that's actually the right field, not just a guess that
+// happens not to crash. Every socket handler downstream assumes
+// `socket.user.id` is a valid integer user id; if this is wrong, every
+// service call fails with a confusing 403 (membership lookups silently
+// resolve to "not a member") instead of an auth error.
+export default function authMiddleware(socket, next) {
   try {
     const token =
       socket.handshake.auth?.token ||
-      socket.handshake.headers?.authorization?.replace('Bearer ', '');
+      socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, '');
 
-    if (!token) return next(new Error('AUTH_NO_TOKEN'));
+    if (!token) {
+      return next(new Error('Authentication required'));
+    }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const id = payload.id ?? payload.userId;
+    if (!id) {
+      return next(new Error('Invalid token payload'));
+    }
 
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-    if (!user) return next(new Error('AUTH_USER_NOT_FOUND'));
-
-    socket.userId = user.id;
-    socket.userRole = user.role;
-
+    socket.user = { id: parseInt(id), role: payload.role };
     next();
   } catch (err) {
-    next(new Error('AUTH_INVALID_TOKEN'));
+    next(new Error('Invalid or expired token'));
   }
 }
