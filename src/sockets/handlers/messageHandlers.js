@@ -1,4 +1,4 @@
-import prisma from '../../lib/prisma';
+import prisma from '../../lib/prisma.js';
 import ChatMessageService from '../../services/chatMessageService.js';
 
 // Golden rule from spec §1: persist first, ack the sender second,
