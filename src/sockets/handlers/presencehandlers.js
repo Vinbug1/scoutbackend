@@ -1,4 +1,4 @@
-import redisClient from '../lib/redis.js';
+import { redisClient } from '../config/redis.js';
 import prisma from '../lib/prisma.js';
 
 // ⚠️ ASSUMPTION — this imports `../lib/redis.js` as a default-exported
