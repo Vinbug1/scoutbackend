@@ -1,8 +1,8 @@
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
-import { pubClient, subClient } from '../config/redis';
+import { pubClient, subClient } from '../config/redis.js';
 import authMiddleware from './authMiddleware.js';
-import registerMessageHandlers from './handlers/messageHandlers';
+import registerMessageHandlers from './handlers/messageHandlers.js';
 import registerPresenceHandlers from './handlers/presencehandlers.js';
 import registerTypingHandlers from './handlers/typingHandlers.js';
 import registerViewingHandlers from './handlers/viewinghandlers.js';

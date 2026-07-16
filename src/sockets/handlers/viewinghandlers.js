@@ -1,4 +1,4 @@
-import { redisClient } from '../../lib/';
+import { redisClient } from '../../config/redis.js';
 import { requireParticipant } from '../../services/chatMessageService';
 
 // Tracks "is this user CURRENTLY looking at this specific chat screen."
