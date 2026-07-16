@@ -2,10 +2,10 @@ import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { pubClient, subClient } from '../config/redis.js';
 import authMiddleware from './authMiddleware.js';
-import registerMessageHandlers from './messageHandlers.js';
-import registerPresenceHandlers from './presenceHandlers.js';
-import registerTypingHandlers from './typingHandlers.js';
-import registerViewingHandlers from './viewingHandlers.js';
+import registerMessageHandlers from './handlers/messageHandlers.js';
+import registerPresenceHandlers from './handlers/presencehandlers.js';
+import registerTypingHandlers from './handlers/typingHandlers.js';
+import registerViewingHandlers from './handlers/viewinghandlers.js';
 
 // Call this once, right after you create your HTTP server, and AFTER
 // Redis has already been connected via connectRedis() in app.js — e.g.:
