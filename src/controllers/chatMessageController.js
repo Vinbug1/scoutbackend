@@ -25,9 +25,9 @@ const ChatMessageController = {
         clientTempId
       } = req.body;
 
-      if (!roomId) {
-        return res.status(400).json({ error: 'roomId is required' });
-      }
+      // if (!roomId) {
+      //   return res.status(400).json({ error: 'roomId is required' });
+      // }
 
       const newMessage = await ChatMessageService.createMessage({
         roomId,
