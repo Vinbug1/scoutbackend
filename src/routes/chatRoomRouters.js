@@ -1,5 +1,6 @@
 import express from 'express';
 import chatRoomController from '../controllers/chatRoomController.js';
+import { verifyToken as protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -284,7 +285,7 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
-router.post('/', chatRoomController.create);
+router.post('/', protect,chatRoomController.create);
 
 
 /**
@@ -354,7 +355,7 @@ router.post('/', chatRoomController.create);
  *       500:
  *         description: Internal server error
  */
-router.post('/direct', chatRoomController.findOrCreateDirect);
+router.post('/direct', protect, chatRoomController.findOrCreateDirect);
 
 /**
  * @swagger
@@ -404,7 +405,7 @@ router.post('/direct', chatRoomController.findOrCreateDirect);
  *       500:
  *         description: Internal server error
  */
-router.get('/', chatRoomController.getAll);
+router.get('/', protect,chatRoomController.getAll);
 
 /**
  * @swagger
@@ -456,7 +457,7 @@ router.get('/', chatRoomController.getAll);
  *       500:
  *         description: Internal server error
  */
-router.get('/me', chatRoomController.getForUser);
+router.get('/me', protect,chatRoomController.getForUser);
 
 /**
  * @swagger
@@ -516,7 +517,7 @@ router.get('/me', chatRoomController.getForUser);
  *       500:
  *         description: Internal server error
  */
-router.get('/:id', chatRoomController.getById);
+router.get('/:id', protect, chatRoomController.getById);
 
 /**
  * @swagger
@@ -594,7 +595,7 @@ router.get('/:id', chatRoomController.getById);
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', chatRoomController.update);
+router.put('/:id', protect, chatRoomController.update);
 
 /**
  * @swagger
@@ -649,7 +650,7 @@ router.put('/:id', chatRoomController.update);
  *       500:
  *         description: Internal server error
  */
-router.delete('/:id', chatRoomController.delete);
+router.delete('/:id',protect,  chatRoomController.delete);
 
 /**
  * @swagger
@@ -706,7 +707,7 @@ router.delete('/:id', chatRoomController.delete);
  *       500:
  *         description: Internal server error
  */
-router.post('/:id/members',chatRoomController.addMember );
+router.post('/:id/members', protect,chatRoomController.addMember );
 
 /**
  * @swagger
@@ -748,7 +749,7 @@ router.post('/:id/members',chatRoomController.addMember );
  *       500:
  *         description: Internal server error
  */
-router.delete( '/:id/members/:userId',chatRoomController.removeMember );
+router.delete( '/:id/members/:userId', protect, chatRoomController.removeMember );
 
 /**
  * @swagger
@@ -799,7 +800,7 @@ router.delete( '/:id/members/:userId',chatRoomController.removeMember );
  *       500:
  *         description: Internal server error
  */
-router.patch('/:id/members/:userId/role',chatRoomController.updateMemberRole );
+router.patch('/:id/members/:userId/role', protect, chatRoomController.updateMemberRole );
 
 /**
  * @swagger
@@ -840,7 +841,7 @@ router.patch('/:id/members/:userId/role',chatRoomController.updateMemberRole );
  *       500:
  *         description: Internal server error
  */
-router.patch( '/:id/mute',chatRoomController.muteRoom);
+router.patch( '/:id/mute',protect, chatRoomController.muteRoom);
 
 /**
  * @swagger
@@ -868,7 +869,7 @@ router.patch( '/:id/mute',chatRoomController.muteRoom);
  *       500:
  *         description: Internal server error
  */
-router.patch( '/:id/unmute', chatRoomController.unmuteRoom );
+router.patch( '/:id/unmute', protect, chatRoomController.unmuteRoom );
 
 export default router;
 

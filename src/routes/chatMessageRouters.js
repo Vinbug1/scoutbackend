@@ -1,6 +1,8 @@
 import express from 'express';
-const router = express.Router();
 import chatMessageController from '../controllers/chatMessageController.js';
+import { verifyToken as  protect } from '../middleware/auth.js';
+
+const router = express.Router();
 
 /**
  * @swagger
@@ -623,7 +625,7 @@ import chatMessageController from '../controllers/chatMessageController.js';
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', chatMessageController.createMessage );
+router.post('/', protect, chatMessageController.createMessage );
 
 /**
  * @swagger
@@ -736,7 +738,7 @@ router.post('/', chatMessageController.createMessage );
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/', chatMessageController.getMessages );
+router.get('/',protect,  chatMessageController.getMessages );
 
 /**
  * @swagger
@@ -854,7 +856,7 @@ router.get('/', chatMessageController.getMessages );
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/room/:roomId/cursor', chatMessageController.getMessagesByCursor );
+router.get('/room/:roomId/cursor', protect, chatMessageController.getMessagesByCursor );
 
 /**
  * @swagger
@@ -995,7 +997,7 @@ router.get('/room/:roomId/cursor', chatMessageController.getMessagesByCursor );
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/room/:roomId/search', chatMessageController.searchMessages );
+router.get('/room/:roomId/search',protect,  chatMessageController.searchMessages );
 
 /**
  * @swagger
@@ -1124,8 +1126,7 @@ router.get('/room/:roomId/search', chatMessageController.searchMessages );
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get( '/:id', chatMessageController.getMessageById
-);
+router.get( '/:id', protect, chatMessageController.getMessageById );
 
 /**
  * @swagger
@@ -1270,8 +1271,7 @@ router.get( '/:id', chatMessageController.getMessageById
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.put('/:id', chatMessageController.updateMessage
-);
+router.put('/:id', protect, chatMessageController.updateMessage );
 
 /**
  * @swagger
@@ -1422,7 +1422,7 @@ router.put('/:id', chatMessageController.updateMessage
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete('/:id',chatMessageController.deleteMessage );
+router.delete('/:id', protect, chatMessageController.deleteMessage );
 
 /**
  * @swagger
@@ -1513,7 +1513,7 @@ router.delete('/:id',chatMessageController.deleteMessage );
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch('/room/:roomId/read', chatMessageController.markRead );
+router.patch('/room/:roomId/read',protect, chatMessageController.markRead );
 
 /**
  * @swagger
@@ -1603,7 +1603,7 @@ router.patch('/room/:roomId/read', chatMessageController.markRead );
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch( '/room/:roomId/delivered', chatMessageController.markDelivered );
+router.patch( '/room/:roomId/delivered', protect, chatMessageController.markDelivered );
 
 /**
  * @swagger
@@ -1692,7 +1692,7 @@ router.patch( '/room/:roomId/delivered', chatMessageController.markDelivered );
  *       500:
  *         description: Internal server error.
  */
-router.get('/room/:roomId/since', chatMessageController.getMessagesSince );
+router.get('/room/:roomId/since', protect, chatMessageController.getMessagesSince );
 
 /**
  * @swagger
@@ -1807,7 +1807,7 @@ router.get('/room/:roomId/since', chatMessageController.getMessagesSince );
  *       500:
  *         description: Internal server error.
  */
-router.get( '/room/:roomId/updates', chatMessageController.getUpdatedMessagesSince );
+router.get( '/room/:roomId/updates', protect, chatMessageController.getUpdatedMessagesSince );
 
 
 export default router;
