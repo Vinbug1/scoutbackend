@@ -439,7 +439,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/chatMessages:
+ * /chatMessages:
  *   post:
  *     summary: Send a new chat message
  *     description: |
@@ -629,7 +629,7 @@ router.post('/', protect, chatMessageController.createMessage );
 
 /**
  * @swagger
- * /api/chatMessages:
+ * /chatMessages:
  *   get:
  *     summary: Get chat messages using offset pagination
  *     description: |
