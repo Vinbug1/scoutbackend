@@ -289,7 +289,7 @@ router.post('/', chatRoomController.create);
 
 /**
  * @swagger
- * /api/chatRooms/direct:
+ * /chatRooms/direct:
  *   post:
  *     summary: Find or create a direct conversation
  *
