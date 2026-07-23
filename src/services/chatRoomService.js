@@ -510,6 +510,19 @@ const chatRoomService = {
     return chatRoomService.muteRoom(roomId, userId, null);
   },
 
+  async leaveConversation(roomId, userId) {
+    await requireParticipant(roomId, userId);
+
+    await prisma.chatRoomMember.delete({
+        where: {
+            roomId_userId: {
+                roomId,
+                userId
+            }
+        }
+    });
+}
+
 };
 
 export default chatRoomService;

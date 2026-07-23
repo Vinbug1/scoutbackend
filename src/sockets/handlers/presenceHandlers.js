@@ -43,6 +43,7 @@ export default function registerPresenceHandlers(io, socket) {
     } catch (err) {
       console.error('presence: disconnect handling failed', err);
     }
+    
   });
 
   async function markOnline() {
