@@ -742,7 +742,7 @@ router.get('/',protect,  chatMessageController.getMessages );
 
 /**
  * @swagger
- * /api/chatMessages/room/{roomId}/cursor:
+ * /chatMessages/{roomId}/cursor:
  *   get:
  *     summary: Get messages using cursor pagination
  *     description: |
@@ -860,7 +860,7 @@ router.get('/room/:roomId/cursor', protect, chatMessageController.getMessagesByC
 
 /**
  * @swagger
- * /api/chatMessages/room/{roomId}/search:
+ * /chatMessages/{roomId}/search:
  *   get:
  *     summary: Search messages inside a chat room
  *     description: |
@@ -1001,7 +1001,7 @@ router.get('/room/:roomId/search',protect,  chatMessageController.searchMessages
 
 /**
  * @swagger
- * /api/chatMessages/{id}:
+ * /chatMessages/{id}:
  *   get:
  *     summary: Get a single chat message
  *     description: |
@@ -1130,7 +1130,7 @@ router.get( '/:id', protect, chatMessageController.getMessageById );
 
 /**
  * @swagger
- * /api/chatMessages/{id}:
+ * /chatMessages/{id}:
  *   put:
  *     summary: Edit a text message
  *     description: |
@@ -1275,7 +1275,7 @@ router.put('/:id', protect, chatMessageController.updateMessage );
 
 /**
  * @swagger
- * /api/chatMessages/{id}:
+ * /chatMessages/{id}:
  *   delete:
  *     summary: Delete a chat message
  *     description: |
@@ -1517,7 +1517,7 @@ router.patch('/:roomId/read',protect, chatMessageController.markRead );
 
 /**
  * @swagger
- * /api/chatMessages/room/{roomId}/delivered:
+ * /chatMessages/{roomId}/delivered:
  *   patch:
  *     summary: Mark messages as delivered
  *     description: |
@@ -1603,11 +1603,11 @@ router.patch('/:roomId/read',protect, chatMessageController.markRead );
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch( '/room/:roomId/delivered', protect, chatMessageController.markDelivered );
+router.patch( '/:roomId/delivered', protect, chatMessageController.markDelivered );
 
 /**
  * @swagger
- * /api/chatMessages/room/{roomId}/since:
+ * /chatMessages/{roomId}/since:
  *   get:
  *     summary: Get new messages since a sequence number
  *     description: |
@@ -1692,11 +1692,11 @@ router.patch( '/room/:roomId/delivered', protect, chatMessageController.markDeli
  *       500:
  *         description: Internal server error.
  */
-router.get('/room/:roomId/since', protect, chatMessageController.getMessagesSince );
+router.get('/:roomId/since', protect, chatMessageController.getMessagesSince );
 
 /**
  * @swagger
- * /api/chatMessages/room/{roomId}/updates:
+ * /chatMessages/{roomId}/updates:
  *   get:
  *     summary: Get edited or deleted messages since a timestamp
  *     description: |
@@ -1807,7 +1807,7 @@ router.get('/room/:roomId/since', protect, chatMessageController.getMessagesSinc
  *       500:
  *         description: Internal server error.
  */
-router.get( '/room/:roomId/updates', protect, chatMessageController.getUpdatedMessagesSince );
+router.get( '/:roomId/updates', protect, chatMessageController.getUpdatedMessagesSince );
 
 
 export default router;
