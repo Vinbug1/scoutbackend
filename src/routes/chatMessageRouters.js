@@ -1426,7 +1426,7 @@ router.delete('/:id', protect, chatMessageController.deleteMessage );
 
 /**
  * @swagger
- * /api/chatMessages/room/{roomId}/read:
+ * /chatMessages/{roomId}/read:
  *   patch:
  *     summary: Mark messages as read
  *     description: |
@@ -1513,7 +1513,7 @@ router.delete('/:id', protect, chatMessageController.deleteMessage );
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch('/room/:roomId/read',protect, chatMessageController.markRead );
+router.patch('/:roomId/read',protect, chatMessageController.markRead );
 
 /**
  * @swagger
