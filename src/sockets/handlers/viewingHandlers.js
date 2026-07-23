@@ -41,6 +41,46 @@ export default function registerViewingHandlers(io, socket) {
     );
   });
 
+  socket.on("conversation:leave", async ({ roomId }, ack) => {
+
+    try {
+
+        const id = parseInt(roomId);
+        await requireParticipant(id, userId);
+        await prisma.chatRoomMember.delete({
+            where:{
+                roomId_userId:{
+                    roomId:id,
+                    userId
+                }
+            }
+        });
+
+        socket.leave(`room:${id}`);
+
+        await redisClient.srem( `viewing:${id}`, userId );
+
+        socket.to(`room:${id}`).emit("conversation:left", {roomId:id, userId
+            }
+        );
+
+        socket.emit("conversation:removed", { roomId:id});
+
+        ack?.({
+            status:"ok"
+        });
+
+    } catch(err){
+
+        ack?.({
+            status:"error",
+            error:err.message
+        });
+
+    }
+
+});
+
   // Safety net — if the socket disconnects (app backgrounded, network
   // drop, tab closed) without ever sending conversation:close, this
   // makes sure the viewing-set doesn't permanently retain a stale entry
@@ -56,4 +96,7 @@ export default function registerViewingHandlers(io, socket) {
       );
     }
   });
+
+
+  
 }
