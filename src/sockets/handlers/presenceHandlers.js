@@ -20,7 +20,8 @@ export default function registerPresenceHandlers(io, socket) {
       });
       for (const { roomId } of memberships) {
         socket.to(`room:${roomId}`).emit('presence:update', { userId, status: 'offline' });
-        await redisClient.sRem(`viewing:${roomId}`, userId); // sRem, not srem
+        // REPLACE WITH:
+        await redisClient.sRem(`viewing:${roomId}`, String(userId)); // sRem, not srem
       }
     } catch (err) {
       console.error('presence: disconnect handling failed', err);

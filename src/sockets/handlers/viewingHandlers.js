@@ -11,7 +11,7 @@ export default function registerViewingHandlers(io, socket) {
       await requireParticipant(id, userId);
 
       socket.join(`room:${id}`);
-      await redisClient.sAdd(`viewing:${id}`, userId); // sAdd, not sadd
+      await redisClient.sAdd(`viewing:${id}`, String(userId));
       ack?.({ status: 'ok' });
     } catch (err) {
       ack?.({ status: 'error', error: err.message });
@@ -21,8 +21,9 @@ export default function registerViewingHandlers(io, socket) {
   socket.on('conversation:close', async ({ roomId }) => {
     const id = parseInt(roomId);
     socket.leave(`room:${id}`);
-    await redisClient.sRem(`viewing:${id}`, userId).catch((err) =>
-      console.error('viewing: sRem failed', err)
+  // REPLACE WITH:
+    await redisClient.sRem(`viewing:${id}`, String(userId)).catch((err) =>
+    console.error('viewing: sRem failed', err)
     );
   });
 
@@ -41,7 +42,7 @@ export default function registerViewingHandlers(io, socket) {
 
       socket.leave(`room:${id}`);
 
-      await redisClient.sRem(`viewing:${id}`, userId); // sRem, not srem
+      await redisClient.sRem(`viewing:${id}`, String(userId)); // sRem, not srem
 
       socket.to(`room:${id}`).emit('conversation:left', { roomId: id, userId });
 
@@ -57,9 +58,9 @@ export default function registerViewingHandlers(io, socket) {
     for (const room of socket.rooms) {
       if (!room.startsWith('room:')) continue;
       const roomId = room.slice('room:'.length);
-      await redisClient.sRem(`viewing:${roomId}`, userId).catch((err) =>
-        console.error('viewing: cleanup on disconnect failed', err)
-      );
+      await redisClient.sRem(`viewing:${roomId}`, String(userId)).catch((err) =>
+      console.error('viewing: cleanup on disconnect failed', err)
+    );
     }
   });
 }
