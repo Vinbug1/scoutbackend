@@ -202,7 +202,7 @@ const chatRoomService = {
       where: { id: { in: pageRoomIds } },
       include: {
         members: {
-          include: { user: { select: { id: true, fullname: true, email: true, isOnline: true, lastSeenAt: true } } }
+          include: { user: { select: { id: true, fullname: true, email: true, isOnline: true, lastSeenAt: true, avatar: true } } }
         },
       },
     });
