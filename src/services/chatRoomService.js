@@ -155,9 +155,6 @@ const chatRoomService = {
     userId = parseInt(userId);
     const take = parseInt(limit);
 
-    // Cheap — a user isn't in thousands of rooms, so this doesn't need
-    // its own pagination. Gives us the room ids to scope the cache-table
-    // query to, plus this user's lastReadSeq per room for unread counts.
     const memberships = await prisma.chatRoomMember.findMany({
       where: { userId },
       select: { roomId: true, lastReadSeq: true },
@@ -176,12 +173,6 @@ const chatRoomService = {
       take,
     });
 
-    // Rooms with no ChatLastMessage row yet (a group just created, no
-    // one has sent a message) have no cursor value to paginate on and
-    // would otherwise never surface. Only checked on the first page
-    // (`before` unset) — an empty room stays pinned at the top until its
-    // first message gives it a real cursor value, then it's picked up by
-    // the ChatLastMessage query above like any other room.
     let emptyRooms = [];
     if (!before) {
       const activeRoomIds = new Set(lastMessages.map(lm => lm.roomId));
@@ -200,6 +191,12 @@ const chatRoomService = {
     }
 
     const pageRoomIds = [...lastMessages.map(lm => lm.roomId), ...emptyRooms.map(r => r.id)];
+
+    // CHANGED — avatarUrl doesn't live on User directly. A PLAYER's
+    // avatar is on Profile, a SCOUT's is on ScoutProfile (both
+    // one-to-one relations off User). Selecting `role` lets us know
+    // which relation to read from below, without over-fetching the
+    // other profile's unrelated fields (position, club, bio, etc).
     const rooms = await prisma.chatRoom.findMany({
       where: { id: { in: pageRoomIds } },
       include: {
@@ -212,7 +209,9 @@ const chatRoomService = {
                 email: true,
                 isOnline: true,
                 lastSeenAt: true,
-                avatarUrl: true, // ADDED — was missing, so participants never carried an avatar to the client
+                role: true,
+                profile: { select: { avatarUrl: true } },
+                scoutProfile: { select: { avatarUrl: true } },
               },
             },
           },
@@ -225,28 +224,45 @@ const chatRoomService = {
     const senders = senderIds.length
       ? await prisma.user.findMany({
           where: { id: { in: senderIds } },
-          select: { id: true, fullname: true, avatarUrl: true }, // ADDED — same fix for lastMessage.sender
+          select: {
+            id: true,
+            fullname: true,
+            role: true,
+            profile: { select: { avatarUrl: true } },
+            scoutProfile: { select: { avatarUrl: true } },
+          },
         })
       : [];
     const senderById = new Map(senders.map(s => [s.id, s]));
+
+    // NEW — flattens the nested profile/scoutProfile shape into a
+    // single `avatarUrl` field on the user object the client actually
+    // consumes, and drops the now-redundant nested objects + role so
+    // the response shape doesn't change for the frontend.
+    const flattenAvatar = (user) => {
+      if (!user) return user;
+      const { profile, scoutProfile, role, ...rest } = user;
+      return {
+        ...rest,
+        avatarUrl: role === 'SCOUT' ? (scoutProfile?.avatarUrl ?? null) : (profile?.avatarUrl ?? null),
+      };
+    };
 
     const activeRows = lastMessages.map(lm => {
       const room = roomById.get(lm.roomId);
       return {
         roomId: lm.roomId,
         name: room.name,
-        participants: room.members.filter(mem => mem.userId !== userId).map(mem => mem.user),
+        participants: room.members
+          .filter(mem => mem.userId !== userId)
+          .map(mem => flattenAvatar(mem.user)),
         lastMessage: {
           preview: lm.preview,
           senderId: lm.senderId,
-          sender: lm.senderId ? senderById.get(lm.senderId) : null,
+          sender: lm.senderId ? flattenAvatar(senderById.get(lm.senderId)) : null,
           seq: lm.seq,
           updatedAt: lm.updatedAt,
         },
-        // CHANGED — unreadCount no longer exists as a stored field on
-        // ChatRoomMember. Computed from room.seqCounter minus this
-        // member's lastReadSeq (spec §7.2) — a stored counter can drift
-        // out of sync under retries/races with no way to detect it.
         unreadCount: Math.max(0, room.seqCounter - (lastReadByRoom.get(lm.roomId) ?? 0)),
         updatedAt: lm.updatedAt,
       };
@@ -257,7 +273,9 @@ const chatRoomService = {
       return {
         roomId: r.id,
         name: r.name,
-        participants: room.members.filter(mem => mem.userId !== userId).map(mem => mem.user),
+        participants: room.members
+          .filter(mem => mem.userId !== userId)
+          .map(mem => flattenAvatar(mem.user)),
         lastMessage: null,
         unreadCount: 0,
         updatedAt: r.createdAt,
@@ -265,12 +283,7 @@ const chatRoomService = {
     });
 
     return {
-      // Empty (message-less) rooms pinned at the top, then the
-      // cursor-paginated active conversations.
       data: [...emptyRows, ...activeRows],
-      // Cursor only advances based on the active page — once you've
-      // exhausted ChatLastMessage rows there's nothing further to page
-      // through (empty rooms only ever appear on page 1).
       nextCursor: activeRows.length === take ? activeRows[activeRows.length - 1].updatedAt : null,
     };
   },
