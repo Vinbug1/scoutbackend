@@ -1,7 +1,7 @@
 import express from 'express';
 import chatMessageController from '../controllers/chatMessageController.js';
 import { verifyToken as  protect } from '../middleware/auth.js';
-
+import { handleChatUploadFields } from '../config/multer.js';
 const router = express.Router();
 
 /**
@@ -625,7 +625,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', protect, chatMessageController.createMessage );
+router.post('/', protect,  handleChatUploadFields, chatMessageController.createMessage );
 
 /**
  * @swagger
