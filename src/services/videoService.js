@@ -45,16 +45,6 @@ const avgRating = (ratings) =>
     ? parseFloat((ratings.reduce((s, r) => s + r.score, 0) / ratings.length).toFixed(1))
     : null;
 
-// =========================================================
-// 🔹 Strip category from videos titled "challenges"
-// =========================================================
-// const stripCategoryIfChallenge = (video) => {
-//   if (video.title?.toLowerCase() === 'challenges') {
-//     const { category, ...rest } = video;
-//     return rest;
-//   }
-//   return video;
-// };
 
 // =========================================================
 // 🔹 Upload a video for a player

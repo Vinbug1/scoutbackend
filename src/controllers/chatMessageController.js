@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma.js';
 import ChatMessageService from '../services/chatMessageService.js';
 
+
 // NOTE — the service layer now enforces membership internally on every
 // function (requireParticipant, called uniformly per spec's checklist —
 // see chatMessageService.js). The old per-route `assertIsMember` helper
@@ -12,57 +13,59 @@ const ChatMessageController = {
   async createMessage(req, res) {
     try {
       const userId = req.user.id;
-      const {
-        roomId,
-        text,
-        type,
-        mediaUrl,
-        thumbnailUrl,
-        fileName,
-        fileSize,
-        durationSec,
-        replyToId,
-        clientTempId
-      } = req.body;
+      const { roomId, text, replyToId, clientTempId } = req.body;
 
       if (!roomId) {
         return res.status(400).json({ error: 'roomId is required' });
       }
 
-      const newMessage = await ChatMessageService.createMessage({
-        roomId,
-        userId,
-        text,
-        type,
-        mediaUrl,
-        thumbnailUrl,
-        fileName,
-        fileSize,
-        durationSec,
-        replyToId,
-        clientTempId,
-      });
+      const mediaFile = req.file || req.files?.media?.[0] || null;
+
+      let newMessage;
+
+      if (mediaFile) {
+        newMessage = await ChatMessageService.createMediaMessage({
+          roomId,
+          userId,
+          file: mediaFile,
+          text,
+          replyToId,
+          clientTempId,
+        });
+      } else {
+        if (!text?.trim()) {
+          return res.status(400).json({ error: 'text is required for text messages' });
+        }
+
+        newMessage = await ChatMessageService.createMessage({
+          roomId,
+          userId,
+          text,
+          type: 'TEXT',
+          mediaUrl: null,
+          thumbnailUrl: null,
+          fileName: null,
+          fileSize: null,
+          durationSec: null,
+          replyToId,
+          clientTempId,
+        });
+      }
 
       const io = req.app.get('io');
       if (io) {
         const roomIdInt = parseInt(roomId);
-        io.to(`room:${roomIdInt}`).emit('message:new', { message: newMessage, tempId: clientTempId });
 
-        // FIX — was selecting `unreadCount`, which no longer exists on
-        // ChatRoomMember. Unread count is now computed
-        // (seqCounter - lastReadSeq), never stored (spec §7.2).
-        //
-        // We don't even need to re-fetch the room's seqCounter here: the
-        // transaction inside createMessage assigned newMessage.seq FROM
-        // that same increment, so newMessage.seq IS the room's current
-        // seqCounter. And the sender's own lastReadSeq was bumped to
-        // that same value inside that transaction — so by the time this
-        // findMany runs, the DB already reflects unreadCount 0 for the
-        // sender without any special-casing needed.
+        io.to(`room:${roomIdInt}`).emit('message:new', {
+          message: newMessage,
+          tempId: clientTempId,
+        });
+
         const members = await prisma.chatRoomMember.findMany({
           where: { roomId: roomIdInt },
           select: { userId: true, lastReadSeq: true },
         });
+
         members.forEach(m => {
           io.to(`user:${m.userId}`).emit('conversation:updated', {
             roomId: roomIdInt,
@@ -74,17 +77,183 @@ const ChatMessageController = {
 
       res.status(201).json({
         message: 'Message sent successfully',
-        data: newMessage
+        data: newMessage,
       });
-
     } catch (error) {
       console.error(error);
       const status = error.statusCode || 500;
       res.status(status).json({
-        error: error.statusCode ? error.message : 'Failed to create message'
+        error: error.statusCode ? error.message : 'Failed to create message',
       });
     }
   },
+
+  // async createMessage(req, res) {
+  //   try {
+  //     const userId = req.user.id;
+  //     const {
+  //       roomId,
+  //       text,
+  //       replyToId,
+  //       clientTempId,
+  //     } = req.body;
+  
+  //     if (!roomId) {
+  //       return res.status(400).json({ error: 'roomId is required' });
+  //     }
+  
+  //     let type = 'TEXT';
+  //     let mediaUrl = null;
+  //     let thumbnailUrl = null;
+  //     let fileName = null;
+  //     let fileSize = null;
+  //     let durationSec = null;
+  
+  //     const mediaFile = req.file || req.files?.media?.[0];
+  //     const thumbnailFile = req.files?.thumbnail?.[0] ?? null;
+  
+  //     if (mediaFile) {
+  //       const uploaded = await uploadMediaToGCS(mediaFile, 'chat-media');
+  
+  //       type = uploaded.mediaType === 'image' ? 'IMAGE' : 'VIDEO';
+  //       mediaUrl = uploaded.url;
+  //       thumbnailUrl = uploaded.thumbnailUrl ?? null;
+  //       fileName = mediaFile.originalname;
+  //       fileSize = mediaFile.size ?? null;
+  //       durationSec = uploaded.durationSec ?? null;
+  //     }
+  
+  //     if (type === 'TEXT' && !text?.trim()) {
+  //       return res.status(400).json({ error: 'text is required for text messages' });
+  //     }
+  
+  //     const newMessage = await ChatMessageService.createMessage({
+  //       roomId,
+  //       userId,
+  //       text: type === 'TEXT' ? text : null,
+  //       type,
+  //       mediaUrl,
+  //       thumbnailUrl,
+  //       fileName,
+  //       fileSize,
+  //       durationSec,
+  //       replyToId,
+  //       clientTempId,
+  //     });
+  
+  //     const io = req.app.get('io');
+  //     if (io) {
+  //       const roomIdInt = parseInt(roomId);
+  
+  //       io.to(`room:${roomIdInt}`).emit('message:new', {
+  //         message: newMessage,
+  //         tempId: clientTempId,
+  //       });
+  
+  //       const members = await prisma.chatRoomMember.findMany({
+  //         where: { roomId: roomIdInt },
+  //         select: { userId: true, lastReadSeq: true },
+  //       });
+  
+  //       members.forEach(m => {
+  //         io.to(`user:${m.userId}`).emit('conversation:updated', {
+  //           roomId: roomIdInt,
+  //           lastMessage: newMessage,
+  //           unreadCount: Math.max(0, newMessage.seq - m.lastReadSeq),
+  //         });
+  //       });
+  //     }
+  
+  //     res.status(201).json({
+  //       message: 'Message sent successfully',
+  //       data: newMessage,
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //     const status = error.statusCode || 500;
+  //     res.status(status).json({
+  //       error: error.statusCode ? error.message : 'Failed to create message',
+  //     });
+  //   }
+  // },
+  
+
+  // async createMessage(req, res) {
+  //   try {
+  //     const userId = req.user.id;
+  //     const {
+  //       roomId,
+  //       text,
+  //       type,
+  //       mediaUrl,
+  //       thumbnailUrl,
+  //       fileName,
+  //       fileSize,
+  //       durationSec,
+  //       replyToId,
+  //       clientTempId
+  //     } = req.body;
+
+  //     if (!roomId) {
+  //       return res.status(400).json({ error: 'roomId is required' });
+  //     }
+
+  //     const newMessage = await ChatMessageService.createMessage({
+  //       roomId,
+  //       userId,
+  //       text,
+  //       type,
+  //       mediaUrl,
+  //       thumbnailUrl,
+  //       fileName,
+  //       fileSize,
+  //       durationSec,
+  //       replyToId,
+  //       clientTempId,
+  //     });
+
+  //     const io = req.app.get('io');
+  //     if (io) {
+  //       const roomIdInt = parseInt(roomId);
+  //       io.to(`room:${roomIdInt}`).emit('message:new', { message: newMessage, tempId: clientTempId });
+
+  //       // FIX — was selecting `unreadCount`, which no longer exists on
+  //       // ChatRoomMember. Unread count is now computed
+  //       // (seqCounter - lastReadSeq), never stored (spec §7.2).
+  //       //
+  //       // We don't even need to re-fetch the room's seqCounter here: the
+  //       // transaction inside createMessage assigned newMessage.seq FROM
+  //       // that same increment, so newMessage.seq IS the room's current
+  //       // seqCounter. And the sender's own lastReadSeq was bumped to
+  //       // that same value inside that transaction — so by the time this
+  //       // findMany runs, the DB already reflects unreadCount 0 for the
+  //       // sender without any special-casing needed.
+  //       const members = await prisma.chatRoomMember.findMany({
+  //         where: { roomId: roomIdInt },
+  //         select: { userId: true, lastReadSeq: true },
+  //       });
+  //       members.forEach(m => {
+  //         io.to(`user:${m.userId}`).emit('conversation:updated', {
+  //           roomId: roomIdInt,
+  //           lastMessage: newMessage,
+  //           unreadCount: Math.max(0, newMessage.seq - m.lastReadSeq),
+  //         });
+  //       });
+  //     }
+
+  //     res.status(201).json({
+  //       message: 'Message sent successfully',
+  //       data: newMessage
+  //     });
+
+  //   } catch (error) {
+  //     console.error(error);
+  //     const status = error.statusCode || 500;
+  //     res.status(status).json({
+  //       error: error.statusCode ? error.message : 'Failed to create message'
+  //     });
+  //   }
+  // },
 
   async getMessages(req, res) {
     try {
