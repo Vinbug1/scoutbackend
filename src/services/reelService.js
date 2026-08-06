@@ -46,9 +46,6 @@ const REEL_WITH_PLAYER_AND_REVIEWS = {
 };
 
 // =========================================================
-// 🔹 Include block: player + reviews + full comments/likes
-// =========================================================
-// =========================================================
 // 🔹 Include block: player + reviews + comments (with replies count) + likes
 // =========================================================
 const REEL_WITH_PLAYER_COMMENTS_AND_LIKES = {
@@ -103,12 +100,7 @@ const computeAge = (dob) => {
   return age;
 };
 
-// =========================================================
-// 🔹 Shape a reel into the standard response format
-// =========================================================
-// =========================================================
-// 🔹 Shape a reel into the standard response format
-// =========================================================
+
 // =========================================================
 // 🔹 Shape a reel into the standard response format
 // =========================================================
@@ -160,27 +152,7 @@ const formatReel = (r) => ({
     likes:    r._count.likes,
   },
 });
-// const formatReel = (r) => ({
-//   ...r,
-//   averageRating: avgRating(r.ratings),
-//   category: r.category ? { id: r.category.id, title: r.category.title } : null,
-//   player: r.player
-//     ? {
-//         id:        r.player.id,
-//         fullname:  r.player.fullname,
-//         avatarUrl: r.player.profile?.avatarUrl ?? null,  // ✅ fixed: was r.player.profile
-//         position:  r.player.profile?.position  ?? null,  // ✅ fixed
-//         country:   r.player.profile?.country   ?? null,  // ✅ fixed
-//         age:       computeAge(r.player.profile?.dob),    // ✅ fixed
-//       }
-//     : null,
-//   stats: {
-//     views:    r._count.views,
-//     comments: r._count.comments,
-//     ratings:  r._count.ratings,
-//     likes:    r._count.likes,
-//   },
-// });
+
 
 // =========================================================
 // 🔹 Attach viewer interactions
@@ -344,21 +316,6 @@ export const getReelById = async (reelId, viewerId = null, ipHash = null) => {
   const [result] = await attachViewerInteractions([formatReel(reel)], viewerId);
   return result;
 };
-// export const getReelById = async (reelId, viewerId = null, ipHash = null) => {
-//   try {
-//     await prisma.reelView.create({
-//       data: { reelId, userId: viewerId, ipHash },
-//     });
-//   } catch { /* duplicate view – skip */ }
-
-//   const reel = await prisma.reel.findUniqueOrThrow({
-//     where:   { id: reelId },
-//     include: REEL_WITH_PLAYER_AND_REVIEWS,
-//   });
-
-//   const [result] = await attachViewerInteractions([formatReel(reel)], viewerId);
-//   return result;
-// };
 
 // =========================================================
 // 🔹 Fetch all published reels by category (with full player info)

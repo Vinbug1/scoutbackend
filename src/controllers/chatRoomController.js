@@ -208,50 +208,6 @@ const chatRoomController = {
     }
   },
 
-  // async update(req, res) {
-  //   try {
-  //     const id = parseInt(req.params.id);
-  //     const userId = req.user.id;
-  //     const { name } = req.body;
-
-  //     await assertIsMember(id, userId);
-
-  //     const updated = await chatRoomService.update(id, { name });
-
-  //     res.status(200).json({
-  //       message: 'Chat room updated successfully',
-  //       data: updated
-  //     });
-
-  //   } catch (error) {
-  //     console.error(error);
-  //     const status = error.statusCode || 500;
-  //     res.status(status).json({
-  //       error: error.statusCode ? error.message : 'Failed to update chat room'
-  //     });
-  //   }
-  // },
-
-  // async delete(req, res) {
-  //   try {
-  //     const id = parseInt(req.params.id);
-  //     const userId = req.user.id;
-
-  //     await assertIsMember(id, userId);
-
-  //     await chatRoomService.delete(id);
-
-  //     res.status(200).json({ message: 'Chat room deleted successfully' });
-
-  //   } catch (error) {
-  //     console.error(error);
-  //     const status = error.statusCode || 500;
-  //     res.status(status).json({
-  //       error: error.statusCode ? error.message : 'Failed to delete chat room'
-  //     });
-  //   }
-  // },
-
   // FIX — chatRoomService.addMember now requires `requesterId` and
   // enforces admin-only internally (see the service audit — this was
   // previously missing entirely, meaning any member could add someone

@@ -414,6 +414,33 @@ export const uploadMediaToGCS = async (input, directory = 'uploads') => {
   }
 };
 
+
+export const uploadChatFields = upload.fields([
+  { name: 'media', maxCount: 1 },
+  { name: 'thumbnail', maxCount: 1 },
+]);
+
+export const handleChatUploadFields = (req, res, next) => {
+  req.setTimeout(10 * 60 * 1000);
+  res.setTimeout(10 * 60 * 1000);
+
+  req.on('close', () => {
+    if (!res.writableEnded) {
+      const files = Object.values(req.files || {}).flat();
+      files.forEach((f) => f.path && cleanupFile(f.path));
+    }
+  });
+
+  uploadChatFields(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    }
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    next();
+  });
+};
 // ========================
 // 🔹 Backward Compat
 // ========================
