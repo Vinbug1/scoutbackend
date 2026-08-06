@@ -2,6 +2,7 @@ import express from 'express';
 import chatMessageController from '../controllers/chatMessageController.js';
 import { verifyToken as  protect } from '../middleware/auth.js';
 import { handleChatUploadFields } from '../config/multer.js';
+
 const router = express.Router();
 
 /**
@@ -625,7 +626,93 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', protect,  handleChatUploadFields, chatMessageController.createMessage );
+router.post('/', protect, chatMessageController.createMessage );
+
+/**
+ * @swagger
+ * /chatMessages/media/upload:
+ *   post:
+ *     summary: Upload an image or video for chat
+ *     description: |
+ *       Uploads an image or video file to GCS and returns the media URLs and metadata.
+ *
+ *       This endpoint does NOT create a chat message.
+ *       The frontend is expected to:
+ *       - Call this endpoint to upload the file.
+ *       - Receive `url`, `thumbnailUrl`, etc.
+ *       - Then send a normal chat message (e.g. via POST /chatMessages) where it
+ *         attaches the URL or embeds the media in the message text/content.
+ *
+ *       Supported file types:
+ *       - Images: JPEG, PNG
+ *       - Videos: MP4, MOV, AVI, WEBM, MPEG, etc.
+ *
+ *     operationId: uploadChatMedia
+ *     tags:
+ *       - ChatMessages
+ *     security:
+ *       - BearerAuth: []
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - roomId
+ *               - media
+ *             properties:
+ *               roomId:
+ *                 type: integer
+ *                 example: 12
+ *               media:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image or video file.
+ *               thumbnail:
+ *                 type: string
+ *                 format: binary
+ *                 nullable: true
+ *                 description: Optional thumbnail file (usually not needed; server generates one for videos).
+ *
+ *     responses:
+ *       200:
+ *         description: Media uploaded successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Media uploaded successfully
+ *                 data:
+ *                   $ref: '#/components/schemas/MediaUploadResponse'
+ *
+ *       400:
+ *         description: Invalid request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               missingRoomId:
+ *                 value:
+ *                   error: roomId is required
+ *               missingMedia:
+ *                 value:
+ *                   error: media file is required
+ *
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden.
+ *       500:
+ *         description: Unexpected server error.
+ */
+router.post('/media/upload', protect, handleChatUploadFields, chatMessageController.uploadMedia);
+
 
 /**
  * @swagger

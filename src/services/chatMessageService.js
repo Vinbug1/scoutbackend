@@ -81,7 +81,6 @@ async function withDerivedStatus(messages, roomId, userId) {
 }
 
 const ChatMessageService = {
-  
   async createMessage({
     roomId,
     userId,
@@ -243,29 +242,23 @@ const ChatMessageService = {
     return newMessage;
   },
 
-  async createMediaMessage({ roomId, userId, file, text = null, replyToId = null, clientTempId = null }) {
+  async uploadMediaOnly({ roomId, userId, file }) {
     if (!file) {
       const error = new Error('No media file provided');
       error.statusCode = 400;
       throw error;
     }
-
+  
     const uploaded = await uploadMediaToGCS(file, `chat-media/${roomId}`);
-    const type = uploaded.mediaType === 'image' ? 'IMAGE' : 'VIDEO';
-
-    return this.createMessage({
-      roomId,
-      userId,
-      text: text?.trim() || null,
-      type,
-      mediaUrl: uploaded.url,
+  
+    return {
+      url: uploaded.url,
       thumbnailUrl: uploaded.thumbnailUrl ?? null,
+      mediaType: uploaded.mediaType, // 'image' | 'video'
       fileName: file.originalname,
       fileSize: file.size,
       durationSec: uploaded.durationSec ?? null,
-      replyToId,
-      clientTempId,
-    });
+    };
   },
 
   async getMessages({ roomId, userId, page = 1, limit = 20 }) {
@@ -603,8 +596,23 @@ export { requireParticipant };
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // import prisma from '../lib/prisma.js';
-// import { uploadMediaToGCS } from '../config/multer.js';
+// import 
 
 // const EDIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes — spec §6.1
 // const DELETE_FOR_EVERYONE_WINDOW_MS = 6 * 60 * 60 * 1000; // 6 hours — spec §6.2
@@ -849,30 +857,6 @@ export { requireParticipant };
 //     }
 
 //     return newMessage;
-//   },
-
-//   async createMediaMessage({ roomId, userId, file, text = null, replyToId = null, clientTempId = null }) {
-//     if (!file) {
-//       throw Object.assign(new Error('No media file provided'), { statusCode: 400 });
-//     }
-
-//     const uploaded = await uploadMediaToGCS(file, `chat/${roomId}`);
-
-//     const type = uploaded.mediaType === 'image' ? 'IMAGE' : 'VIDEO';
-
-//     return this.createMessage({
-//       roomId,
-//       userId,
-//       text: text?.trim() || null,
-//       type,
-//       mediaUrl: uploaded.url,
-//       thumbnailUrl: uploaded.thumbnailUrl ?? null,
-//       fileName: file.originalname,
-//       fileSize: file.size,
-//       durationSec: uploaded.durationSec ?? null,
-//       replyToId,
-//       clientTempId,
-//     });
 //   },
 
 //   // CHANGED — `userId` is now effectively required: it's used both to
