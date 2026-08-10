@@ -7,6 +7,7 @@ import { fileTypeFromBuffer } from 'file-type';
 import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
 import os from 'os';
+import { encode } from 'blurhash';
 
 // ========================
 // 🔹 Allowed Types
@@ -124,6 +125,25 @@ const compressImage = async (buffer, mimeType) => {
   return { buffer: compressed, mimeType: 'image/jpeg', extension: 'jpg' };
 };
 
+const generateBlurHash = async (buffer) => {
+  const { data, info } = await sharp(buffer)
+    .rotate()
+    .resize(32, 32, {
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  return encode(
+    new Uint8ClampedArray(data),
+    info.width,
+    info.height,
+    4,
+    4
+  );
+};
 // ========================
 // 🔹 FFmpeg Rendition Encoder
 // FIX: Encode renditions sequentially instead of concurrently via
@@ -166,60 +186,78 @@ const encodeRendition = (inputPath, tmpDir, { label, height, videoBitrate, audio
 // 🔹 HLS Video Conversion
 // ========================
 const convertAndUploadHLS = async (inputPath, mimeType, directory) => {
-  // inputPath is now always a disk path (multer diskStorage or bufferToTempFile).
-  const sessionId    = uuidv4();
-  const tmpDir       = path.join(os.tmpdir(), `hls_${sessionId}`);
-  const outputThumb  = path.join(tmpDir, 'thumbnail.jpg');
+  const sessionId = uuidv4();
+  const tmpDir = path.join(os.tmpdir(), `hls_${sessionId}`);
+  const outputThumb = path.join(tmpDir, 'thumbnail.jpg');
+
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  // ── Passthrough: already an HLS stream ────────────────────────────────────
+  // Already an HLS playlist.
+  // We cannot generate a thumbnail or BlurHash unless one is supplied separately.
   if (mimeType === 'application/x-mpegurl') {
-    const gcsPrefix = sanitizeFileName(`${directory}/${sessionId}`);
-    const blobName  = `${gcsPrefix}/index.m3u8`;
-    const buffer    = fs.readFileSync(inputPath);
-    await uploadBufferToGCS(buffer, blobName, 'application/x-mpegurl');
-    return {
-      masterUrl:    `https://storage.googleapis.com/${bucket.name}/${blobName}`,
-      thumbnailUrl: null,
-      fileName:     blobName,
-      durationSec:  null,
-    };
+    try {
+      const gcsPrefix = sanitizeFileName(`${directory}/${sessionId}`);
+      const blobName = `${gcsPrefix}/index.m3u8`;
+
+      const buffer = fs.readFileSync(inputPath);
+
+      await uploadBufferToGCS(
+        buffer,
+        blobName,
+        'application/x-mpegurl'
+      );
+
+      return {
+        masterUrl: `https://storage.googleapis.com/${bucket.name}/${blobName}`,
+        thumbnailUrl: null,
+        fileName: blobName,
+        durationSec: null,
+        blurHash: null,
+      };
+    } finally {
+      cleanupDir(tmpDir);
+    }
   }
 
   let probedDuration = null;
 
   try {
-    // ── Step 1: Probe duration ───────────────────────────────────────────────
-    // Probe separately so we have the duration before encoding starts.
+    // Probe video duration.
     await new Promise((resolve) => {
       ffmpeg.ffprobe(inputPath, (err, metadata) => {
         if (!err && metadata?.format?.duration) {
           probedDuration = Math.round(metadata.format.duration);
         }
-        resolve(); // never reject — duration is optional
+
+        resolve();
       });
     });
 
-    // ── Step 2: Encode renditions sequentially ───────────────────────────────
+    // Encode all renditions sequentially.
     for (const rendition of renditions) {
       await encodeRendition(inputPath, tmpDir, rendition);
     }
 
-    // ── Step 3: Build the master playlist ────────────────────────────────────
     const bandwidthMap = {
       '1080p': 4500000,
-      '720p':  2800000,
-      '480p':  1400000,
-      '360p':   800000,
-    };
-    const resolutionMap = {
-      '1080p': '1920x1080',
-      '720p':  '1280x720',
-      '480p':  '854x480',
-      '360p':  '640x360',
+      '720p': 2800000,
+      '480p': 1400000,
+      '360p': 800000,
     };
 
-    const masterLines = ['#EXTM3U', '#EXT-X-VERSION:3', ''];
+    const resolutionMap = {
+      '1080p': '1920x1080',
+      '720p': '1280x720',
+      '480p': '854x480',
+      '360p': '640x360',
+    };
+
+    const masterLines = [
+      '#EXTM3U',
+      '#EXT-X-VERSION:3',
+      '',
+    ];
+
     for (const { label } of renditions) {
       masterLines.push(
         `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidthMap[label]},RESOLUTION=${resolutionMap[label]}`,
@@ -227,31 +265,54 @@ const convertAndUploadHLS = async (inputPath, mimeType, directory) => {
         ''
       );
     }
-    const masterPlaylistPath = path.join(tmpDir, 'master.m3u8');
-    fs.writeFileSync(masterPlaylistPath, masterLines.join('\n'));
 
-    // ── Step 4: Extract thumbnail ─────────────────────────────────────────────
+    const masterPlaylistPath = path.join(tmpDir, 'master.m3u8');
+
+    fs.writeFileSync(
+      masterPlaylistPath,
+      masterLines.join('\n')
+    );
+
+    // Extract thumbnail at one second, then fall back to frame zero.
     await new Promise((resolve, reject) => {
       ffmpeg(inputPath)
-        .screenshots({ timestamps: ['00:00:01'], filename: 'thumbnail.jpg', folder: tmpDir, size: '1024x?' })
+        .screenshots({
+          timestamps: ['00:00:01'],
+          filename: 'thumbnail.jpg',
+          folder: tmpDir,
+          size: '1024x?',
+        })
         .on('end', resolve)
         .on('error', () => {
-          // Fallback to frame 0 for very short clips
           ffmpeg(inputPath)
-            .screenshots({ timestamps: ['00:00:00'], filename: 'thumbnail.jpg', folder: tmpDir, size: '1024x?' })
+            .screenshots({
+              timestamps: ['00:00:00'],
+              filename: 'thumbnail.jpg',
+              folder: tmpDir,
+              size: '1024x?',
+            })
             .on('end', resolve)
             .on('error', reject);
         });
     });
 
+    if (!fs.existsSync(outputThumb)) {
+      throw new Error('Could not generate video thumbnail.');
+    }
+
     const rawThumb = fs.readFileSync(outputThumb);
-    const { buffer: compressedThumb } = await compressImage(rawThumb, 'image/jpeg');
 
-    // ── Step 5: Upload everything to GCS ─────────────────────────────────────
-    const gcsPrefix    = sanitizeFileName(`${directory}/${sessionId}`);
-    const uploadTasks  = [];
+    const {
+      buffer: compressedThumb,
+    } = await compressImage(rawThumb, 'image/jpeg');
 
-    // Master playlist
+    // Generate BlurHash from the processed video thumbnail.
+    const blurHash = await generateBlurHash(compressedThumb);
+
+    const gcsPrefix = sanitizeFileName(`${directory}/${sessionId}`);
+    const uploadTasks = [];
+
+    // Master playlist.
     uploadTasks.push(
       uploadBufferToGCS(
         fs.readFileSync(masterPlaylistPath),
@@ -260,36 +321,49 @@ const convertAndUploadHLS = async (inputPath, mimeType, directory) => {
       )
     );
 
-    // Per-rendition HLS files
+    // Rendition playlists and segments.
     for (const { label } of renditions) {
       const rendDir = path.join(tmpDir, label);
+
       for (const file of fs.readdirSync(rendDir)) {
-        const fileBuffer  = fs.readFileSync(path.join(rendDir, file));
-        const gcsPath     = `${gcsPrefix}/${label}/${file}`;
-        const contentType = file.endsWith('.m3u8') ? 'application/x-mpegurl' : 'video/MP2T';
-        uploadTasks.push(uploadBufferToGCS(fileBuffer, gcsPath, contentType));
+        const filePath = path.join(rendDir, file);
+        const fileBuffer = fs.readFileSync(filePath);
+        const gcsPath = `${gcsPrefix}/${label}/${file}`;
+
+        const contentType = file.endsWith('.m3u8')
+          ? 'application/x-mpegurl'
+          : 'video/MP2T';
+
+        uploadTasks.push(
+          uploadBufferToGCS(
+            fileBuffer,
+            gcsPath,
+            contentType
+          )
+        );
       }
     }
 
-    // Thumbnail
+    // Video thumbnail.
     uploadTasks.push(
-      uploadBufferToGCS(compressedThumb, `${gcsPrefix}/thumbnail.jpg`, 'image/jpeg')
+      uploadBufferToGCS(
+        compressedThumb,
+        `${gcsPrefix}/thumbnail.jpg`,
+        'image/jpeg'
+      )
     );
 
     await Promise.all(uploadTasks);
 
     return {
-      masterUrl:    `https://storage.googleapis.com/${bucket.name}/${gcsPrefix}/master.m3u8`,
+      masterUrl: `https://storage.googleapis.com/${bucket.name}/${gcsPrefix}/master.m3u8`,
       thumbnailUrl: `https://storage.googleapis.com/${bucket.name}/${gcsPrefix}/thumbnail.jpg`,
-      fileName:     `${gcsPrefix}/master.m3u8`,
-      durationSec:  probedDuration,
+      fileName: `${gcsPrefix}/master.m3u8`,
+      durationSec: probedDuration,
+      blurHash,
     };
-
   } finally {
     cleanupDir(tmpDir);
-    // NOTE: inputPath itself is NOT cleaned up here.
-    // • If it came from multer diskStorage, the route should delete req.file.path after the response.
-    // • If it came from bufferToTempFile (base64 path), uploadMediaToGCS cleans it up.
   }
 };
 
@@ -321,96 +395,191 @@ const uploadBufferToGCS = (buffer, blobPath, contentType) =>
  * @param {string|object} input
  * @param {string}        directory  GCS folder prefix (default: 'uploads')
  */
-export const uploadMediaToGCS = async (input, directory = 'uploads') => {
+export const uploadMediaToGCS = async (
+  input,
+  directory = 'uploads'
+) => {
   const startTime = Date.now();
+
   let mimeType;
-  let inputPath;          // disk path we'll hand to converters
-  let isTemporaryPath = false; // true when WE created the temp file and must delete it
+  let inputPath;
+  let shouldCleanupInput = false;
 
-  // ── Resolve input ──────────────────────────────────────────────────────────
+  // Resolve Base64 or Multer input.
   if (typeof input === 'string') {
-    // Base64 data-URI
-    const matches = input.match(/^data:(.+);base64,(.+)$/);
-    if (!matches) throw new Error('Invalid Base64 format.');
-    mimeType         = matches[1];
-    const buffer     = Buffer.from(matches[2], 'base64');
-    const ext        = mimeType.split('/')[1]?.split(';')[0] || 'bin';
-    inputPath        = bufferToTempFile(buffer, `.${ext}`);
-    isTemporaryPath  = true;
+    const matches = input.match(/^data:([^;]+);base64,(.+)$/);
 
+    if (!matches) {
+      const error = new Error('Invalid Base64 format.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    mimeType = matches[1].toLowerCase();
+
+    const buffer = Buffer.from(matches[2], 'base64');
+
+    if (!buffer.length) {
+      const error = new Error('Base64 file is empty.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const ext = mimeType.split('/')[1] || 'bin';
+
+    inputPath = bufferToTempFile(buffer, `.${ext}`);
+    shouldCleanupInput = true;
   } else if (input?.path && input?.mimetype) {
-    // Multer diskStorage file object
-    mimeType  = input.mimetype;
+    mimeType = input.mimetype.toLowerCase();
     inputPath = input.path;
 
+    // This function owns the temporary Multer file after receiving it.
+    shouldCleanupInput = true;
   } else {
-    throw new Error('Unsupported input: pass a base64 data-URI string or a Multer diskStorage file object.');
+    const error = new Error(
+      'Unsupported input. Pass a Base64 data URI or a Multer diskStorage file.'
+    );
+    error.statusCode = 400;
+    throw error;
   }
 
-  // ── Detect real MIME from file bytes (overrides declared MIME) ────────────
   try {
-    const sampleBuffer = Buffer.alloc(4100);
-    const fd           = fs.openSync(inputPath, 'r');
-    const bytesRead    = fs.readSync(fd, sampleBuffer, 0, 4100, 0);
-    fs.closeSync(fd);
-    const detected = await fileTypeFromBuffer(sampleBuffer.slice(0, bytesRead));
-    if (detected?.mime) mimeType = detected.mime;
-  } catch {
-    // If detection fails, proceed with declared MIME
-  }
+    if (!fs.existsSync(inputPath)) {
+      const error = new Error('Uploaded file could not be found.');
+      error.statusCode = 400;
+      throw error;
+    }
 
-  const isImage = mimeType.startsWith('image/');
-  const isVideo = mimeType.startsWith('video/') || mimeType === 'application/x-mpegurl';
+    const { size: originalSize } = fs.statSync(inputPath);
 
-  try {
-    // ── Image path ─────────────────────────────────────────────────────────
+    if (!originalSize) {
+      const error = new Error('Uploaded file is empty.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Detect the actual file type from its bytes.
+    try {
+      const sampleBuffer = Buffer.alloc(4100);
+      const fd = fs.openSync(inputPath, 'r');
+
+      try {
+        const bytesRead = fs.readSync(
+          fd,
+          sampleBuffer,
+          0,
+          sampleBuffer.length,
+          0
+        );
+
+        const detected = await fileTypeFromBuffer(
+          sampleBuffer.subarray(0, bytesRead)
+        );
+
+        if (detected?.mime) {
+          mimeType = detected.mime.toLowerCase();
+        }
+      } finally {
+        fs.closeSync(fd);
+      }
+    } catch {
+      // Use the MIME type supplied by Multer if byte detection fails.
+    }
+
+    const isImage =
+      typeof mimeType === 'string' &&
+      mimeType.startsWith('image/');
+
+    const isVideo =
+      typeof mimeType === 'string' &&
+      (
+        mimeType.startsWith('video/') ||
+        mimeType === 'application/x-mpegurl'
+      );
+
+    // Image processing.
     if (isImage) {
       if (!ALLOWED_IMAGE_MIME.includes(mimeType)) {
-        throw new Error('Only JPEG and PNG images are accepted.');
+        const error = new Error(
+          'Only JPEG and PNG images are accepted.'
+        );
+        error.statusCode = 400;
+        throw error;
       }
 
       const rawBuffer = fs.readFileSync(inputPath);
-      const { buffer: finalBuf, mimeType: finalMime, extension } =
-        await compressImage(rawBuffer, mimeType);
 
-      const fileName = sanitizeFileName(`${directory}/${uuidv4()}.${extension}`);
-      await uploadBufferToGCS(finalBuf, fileName, finalMime);
+      const {
+        buffer: finalBuffer,
+        mimeType: finalMimeType,
+        extension,
+      } = await compressImage(rawBuffer, mimeType);
+
+      // Generate the hash from the processed image that will be displayed.
+      const blurHash = await generateBlurHash(finalBuffer);
+
+      const fileName = sanitizeFileName(
+        `${directory}/${uuidv4()}.${extension}`
+      );
+
+      await uploadBufferToGCS(
+        finalBuffer,
+        fileName,
+        finalMimeType
+      );
 
       return {
-        url:          `https://storage.googleapis.com/${bucket.name}/${fileName}`,
+        url: `https://storage.googleapis.com/${bucket.name}/${fileName}`,
+        thumbnailUrl: null,
         fileName,
-        mediaType:    'image',
-        sizeKB:       Number((finalBuf.length / 1024).toFixed(2)),
+        mediaType: 'image',
+        blurHash,
+        sizeKB: Number(
+          (finalBuffer.length / 1024).toFixed(2)
+        ),
         uploadTimeMS: Date.now() - startTime,
-        durationSec:  null,
+        durationSec: null,
       };
     }
 
-    // ── Video path ─────────────────────────────────────────────────────────
+    // Video processing.
     if (isVideo) {
-      // Get original file size before conversion
-      const { size: originalSize } = fs.statSync(inputPath);
-
-      const { masterUrl, thumbnailUrl, fileName, durationSec } =
-        await convertAndUploadHLS(inputPath, mimeType, directory);
-
-      return {
-        url:          masterUrl,
+      const {
+        masterUrl,
         thumbnailUrl,
         fileName,
-        mediaType:    'video',
-        sizeKB:       Number((originalSize / 1024).toFixed(2)),
-        uploadTimeMS: Date.now() - startTime,
         durationSec,
+        blurHash,
+      } = await convertAndUploadHLS(
+        inputPath,
+        mimeType,
+        directory
+      );
+
+      return {
+        url: masterUrl,
+        thumbnailUrl: thumbnailUrl ?? null,
+        fileName,
+        mediaType: 'video',
+        blurHash: blurHash ?? null,
+        sizeKB: Number(
+          (originalSize / 1024).toFixed(2)
+        ),
+        uploadTimeMS: Date.now() - startTime,
+        durationSec: durationSec ?? null,
       };
     }
 
-    throw new Error(`Unsupported media type: ${mimeType}`);
-
+    const error = new Error(
+      `Unsupported media type: ${mimeType || 'unknown'}`
+    );
+    error.statusCode = 400;
+    throw error;
   } finally {
-    // Clean up the temp file only if WE created it (base64 path).
-    // Multer disk files are the route's responsibility to delete after responding.
-    if (isTemporaryPath) cleanupFile(inputPath);
+    // Clean both Base64-created files and Multer temporary files.
+    if (shouldCleanupInput && inputPath) {
+      cleanupFile(inputPath);
+    }
   }
 };
 
