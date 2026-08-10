@@ -18,7 +18,7 @@ const ChatMessageController = {
         type,
         mediaUrl,
         thumbnailUrl,
-        blurHash,
+        blurhash,
         fileName,
         fileSize,
         durationSec,
