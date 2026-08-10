@@ -326,7 +326,7 @@ const convertAndUploadHLS = async (
         thumbnailUrl: null,
         fileName: blobName,
         durationSec: null,
-        blurHash: null,
+        blurhash: null,
       };
     } finally {
       cleanupDir(temporaryDirectory);
@@ -434,7 +434,7 @@ const convertAndUploadHLS = async (
       'image/jpeg'
     );
 
-    const blurHash = await generateBlurHash(
+    const blurhash = await generateBlurHash(
       compressedThumbnail
     );
 
@@ -499,7 +499,7 @@ const convertAndUploadHLS = async (
         `${bucket.name}/${prefix}/thumbnail.jpg`,
       fileName: `${prefix}/master.m3u8`,
       durationSec,
-      blurHash,
+      blurhash,
     };
   } finally {
     cleanupDir(temporaryDirectory);
@@ -656,7 +656,7 @@ export const uploadMediaToGCS = async (
         mimeType
       );
 
-      const blurHash = await generateBlurHash(
+      const blurhash = await generateBlurHash(
         finalBuffer
       );
 
@@ -677,7 +677,7 @@ export const uploadMediaToGCS = async (
         thumbnailUrl: null,
         fileName,
         mediaType: 'image',
-        blurHash,
+        blurhash,
         sizeKB: Number(
           (finalBuffer.length / 1024).toFixed(2)
         ),
@@ -692,7 +692,7 @@ export const uploadMediaToGCS = async (
         thumbnailUrl,
         fileName,
         durationSec,
-        blurHash,
+        blurhash,
       } = await convertAndUploadHLS(
         inputPath,
         mimeType,
@@ -704,7 +704,7 @@ export const uploadMediaToGCS = async (
         thumbnailUrl: thumbnailUrl ?? null,
         fileName,
         mediaType: 'video',
-        blurHash: blurHash ?? null,
+        blurhash: blurhash ?? null,
         sizeKB: Number(
           (originalSize / 1024).toFixed(2)
         ),

@@ -651,7 +651,7 @@ model ChatMessage {
 
   mediaUrl     String?
   thumbnailUrl String?
-  blurHash      String?
+  blurhash      String?
 
 
   // NEW — spec §8.2 needs somewhere to record transcode/processing state
