@@ -18,6 +18,7 @@ const ChatMessageController = {
         type,
         mediaUrl,
         thumbnailUrl,
+        blurHash,
         fileName,
         fileSize,
         durationSec,
@@ -36,6 +37,7 @@ const ChatMessageController = {
         type,
         mediaUrl,
         thumbnailUrl,
+        blurHash,
         fileName,
         fileSize,
         durationSec,
@@ -92,12 +94,20 @@ const ChatMessageController = {
       const { roomId } = req.body;
   
       if (!roomId) {
-        return res.status(400).json({ error: 'roomId is required' });
+        return res.status(400).json({
+          error: 'roomId is required',
+        });
       }
   
-      const mediaFile = req.files?.media?.[0] || req.file || null;
+      const mediaFile =
+        req.files?.media?.[0] ||
+        req.file ||
+        null;
+  
       if (!mediaFile) {
-        return res.status(400).json({ error: 'media file is required' });
+        return res.status(400).json({
+          error: 'media file is required',
+        });
       }
   
       const result = await ChatMessageService.uploadMediaOnly({
@@ -108,12 +118,25 @@ const ChatMessageController = {
   
       return res.status(200).json({
         message: 'Media uploaded successfully',
-        data: result,
+        data: {
+          url: result.url,
+          thumbnailUrl: result.thumbnailUrl ?? null,
+          blurHash: result.blurHash ?? null,
+          mediaType: result.mediaType,
+          fileName: result.fileName,
+          fileSize: result.fileSize,
+          durationSec: result.durationSec ?? null,
+        },
       });
     } catch (error) {
+      console.error(error);
+  
       const status = error.statusCode || 500;
+  
       return res.status(status).json({
-        error: error.statusCode ? error.message : 'Failed to upload media',
+        error: error.statusCode
+          ? error.message
+          : 'Failed to upload media',
       });
     }
   },
@@ -226,48 +249,91 @@ const ChatMessageController = {
 
   async deleteMessage(req, res) {
     try {
-      const id = parseInt(req.params.id);
+      const id = Number.parseInt(req.params.id, 10);
       const userId = req.user.id;
-      // NEW — supports "delete for me" (spec §6.2). Defaults to the
-      // original "delete for everyone" behavior if the client doesn't
-      // specify.
-      const scope = req.body.scope || req.query.scope || 'everyone';
-
-      // FIX — was `ChatMessageService.getMessageById(id)`, which is
-      // membership-gated. That's actively wrong for scope 'everyone':
-      // the spec deliberately allows a user to delete their own message
-      // even after they've LEFT the room (§14.29) — so gating the
-      // roomId lookup on current membership would block exactly the
-      // case this feature exists for. This is a plain, unauthenticated
-      // read of just the roomId, purely for the socket broadcast below;
-      // the actual authorization (ownership + time window, or
-      // membership for scope 'me') happens inside deleteMessage itself.
+  
+      if (!Number.isInteger(id)) {
+        return res.status(400).json({
+          error: 'Invalid message ID',
+        });
+      }
+  
+      const scope =
+        req.body?.scope ||
+        req.query?.scope ||
+        'everyone';
+  
+      if (!['everyone', 'me'].includes(scope)) {
+        return res.status(400).json({
+          error: 'Invalid delete scope',
+        });
+      }
+  
+      // Only retrieve the room ID for socket notification.
+      // Authorization is handled inside ChatMessageService.deleteMessage().
       const existing = await prisma.chatMessage.findUnique({
         where: { id },
         select: { roomId: true },
       });
+  
       if (!existing) {
-        return res.status(404).json({ error: 'Message not found' });
+        return res.status(404).json({
+          error: 'Message not found',
+        });
       }
-
-      await ChatMessageService.deleteMessage(id, userId, scope);
-
+  
+      await ChatMessageService.deleteMessage(
+        id,
+        userId,
+        scope
+      );
+  
       const io = req.app.get('io');
+  
       if (io) {
-        io.to(`room:${existing.roomId}`).emit('message:deleted', {
+        if (scope === 'everyone') {
+          // Everyone in the room should receive this event.
+          io.to(`room:${existing.roomId}`).emit(
+            'message:deleted',
+            {
+              messageId: id,
+              roomId: existing.roomId,
+              scope: 'everyone',
+            }
+          );
+        } else {
+          // Only the requesting user's UI should remove this message.
+          io.to(`user:${userId}`).emit(
+            'message:deleted',
+            {
+              messageId: id,
+              roomId: existing.roomId,
+              scope: 'me',
+              userId,
+            }
+          );
+        }
+      }
+  
+      return res.status(200).json({
+        message: scope === 'everyone'
+          ? 'Message deleted for everyone'
+          : 'Message deleted for you',
+        data: {
           messageId: id,
           roomId: existing.roomId,
           scope,
-        });
-      }
-
-      res.status(200).json({ message: 'Message deleted successfully' });
-
+        },
+      });
     } catch (error) {
       console.error(error);
+  
       const status = error.statusCode || 500;
-      res.status(status).json({
-        error: error.statusCode ? error.message : 'Failed to delete message'
+  
+      return res.status(status).json({
+        error: error.statusCode
+          ? error.message
+          : 'Failed to delete message',
       });
     }
   },

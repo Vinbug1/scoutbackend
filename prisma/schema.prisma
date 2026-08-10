@@ -651,6 +651,8 @@ model ChatMessage {
 
   mediaUrl     String?
   thumbnailUrl String?
+  blurHash      String?
+
 
   // NEW — spec §8.2 needs somewhere to record transcode/processing state
   // (e.g. { processingStatus: "processing" | "ready" | "failed" }) so the
