@@ -244,27 +244,71 @@ const ChatMessageService = {
     return newMessage;
   },
 
-  async uploadMediaOnly({ roomId, userId, file }) {
+  async uploadMediaOnly({
+    roomId,
+    userId,
+    file,
+  }) {
     if (!file) {
-      const error = new Error('No media file provided');
+      const error = new Error(
+        'No media file provided'
+      );
+  
       error.statusCode = 400;
       throw error;
     }
   
-    await requireParticipant(parseInt(roomId), parseInt(userId));
+    await requireParticipant(
+      parseInt(roomId, 10),
+      parseInt(userId, 10)
+    );
   
-    const uploaded = await uploadMediaToGCS(file, `chat-media/${roomId}`);
+    const uploaded =
+      await uploadMediaToGCS(
+        file,
+        `chat-media/${roomId}`
+      );
   
     return {
       url: uploaded.url,
-      thumbnailUrl: uploaded.thumbnailUrl ?? null,
-      blurhash: uploaded.blurhash ?? null,
+      thumbnailUrl:
+        uploaded.thumbnailUrl ?? null,
+  
+      /*
+       * Image BlurHash is generated when the
+       * ChatMessage is created, not here.
+       */
+      blurhash: null,
+  
       mediaType: uploaded.mediaType,
       fileName: file.originalname,
       fileSize: file.size,
-      durationSec: uploaded.durationSec ?? null,
+      durationSec:
+        uploaded.durationSec ?? null,
     };
   },
+
+  // async uploadMediaOnly({ roomId, userId, file }) {
+  //   if (!file) {
+  //     const error = new Error('No media file provided');
+  //     error.statusCode = 400;
+  //     throw error;
+  //   }
+  
+  //   await requireParticipant(parseInt(roomId), parseInt(userId));
+  
+  //   const uploaded = await uploadMediaToGCS(file, `chat-media/${roomId}`);
+  
+  //   return {
+  //     url: uploaded.url,
+  //     thumbnailUrl: uploaded.thumbnailUrl ?? null,
+  //     blurhash: uploaded.blurhash ?? null,
+  //     mediaType: uploaded.mediaType,
+  //     fileName: file.originalname,
+  //     fileSize: file.size,
+  //     durationSec: uploaded.durationSec ?? null,
+  //   };
+  // },
 
   async getMessages({ roomId, userId, page = 1, limit = 20 }) {
     roomId = parseInt(roomId);
