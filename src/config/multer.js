@@ -7,7 +7,7 @@ import { fileTypeFromBuffer } from 'file-type';
 import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
 import os from 'os';
-import { encode } from 'blurhash';
+// import { encode } from 'blurhash';
 
 const ALLOWED_IMAGE_MIME = [
   'image/jpeg',
@@ -177,27 +177,27 @@ const compressImage = async (buffer, mimeType) => {
   };
 };
 
-const generateBlurHash = async (buffer) => {
-  const { data, info } = await sharp(buffer)
-    .rotate()
-    .resize(32, 32, {
-      fit: 'inside',
-      withoutEnlargement: true,
-    })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({
-      resolveWithObject: true,
-    });
+// const generateBlurHash = async (buffer) => {
+//   const { data, info } = await sharp(buffer)
+//     .rotate()
+//     .resize(32, 32, {
+//       fit: 'inside',
+//       withoutEnlargement: true,
+//     })
+//     .ensureAlpha()
+//     .raw()
+//     .toBuffer({
+//       resolveWithObject: true,
+//     });
 
-  return encode(
-    new Uint8ClampedArray(data),
-    info.width,
-    info.height,
-    4,
-    4
-  );
-};
+//   return encode(
+//     new Uint8ClampedArray(data),
+//     info.width,
+//     info.height,
+//     4,
+//     4
+//   );
+// };
 
 const renditions = [
   {
@@ -634,84 +634,87 @@ export const uploadMediaToGCS = async (
         mimeType === 'application/x-mpegurl'
       );
 
-    if (isImage) {
-      if (!ALLOWED_IMAGE_MIME.includes(mimeType)) {
-        const error = new Error(
-          'Only JPEG and PNG images are accepted.'
+      if (isImage) {
+        if (!ALLOWED_IMAGE_MIME.includes(mimeType)) {
+          const error = new Error(
+            'Only JPEG and PNG images are accepted.'
+          );
+      
+          error.statusCode = 400;
+          throw error;
+        }
+      
+        const rawBuffer = fs.readFileSync(
+          inputPath
         );
-        error.statusCode = 400;
-        throw error;
+      
+        const {
+          buffer: finalBuffer,
+          mimeType: finalMimeType,
+          extension,
+        } = await compressImage(
+          rawBuffer,
+          mimeType
+        );
+      
+        const fileName = sanitizeFileName(
+          `${directory}/${uuidv4()}.${extension}`
+        );
+      
+        await uploadBufferToGCS(
+          finalBuffer,
+          fileName,
+          finalMimeType
+        );
+      
+        return {
+          url:
+            `https://storage.googleapis.com/` +
+            `${bucket.name}/${fileName}`,
+      
+          thumbnailUrl: null,
+          fileName,
+      
+          mediaType: 'image',
+      
+          // Generated later when the chat message is sent.
+          blurhash: null,
+      
+          sizeKB: Number(
+            (finalBuffer.length / 1024).toFixed(2)
+          ),
+      
+          uploadTimeMS: Date.now() - startTime,
+          durationSec: null,
+        };
       }
 
-      const rawBuffer = fs.readFileSync(
-        inputPath
-      );
-
-      const {
-        buffer: finalBuffer,
-        mimeType: finalMimeType,
-        extension,
-      } = await compressImage(
-        rawBuffer,
-        mimeType
-      );
-
-      const blurhash = await generateBlurHash(
-        finalBuffer
-      );
-
-      const fileName = sanitizeFileName(
-        `${directory}/${uuidv4()}.${extension}`
-      );
-
-      await uploadBufferToGCS(
-        finalBuffer,
-        fileName,
-        finalMimeType
-      );
-
-      return {
-        url:
-          `https://storage.googleapis.com/` +
-          `${bucket.name}/${fileName}`,
-        thumbnailUrl: null,
-        fileName,
-        mediaType: 'image',
-        blurhash,
-        sizeKB: Number(
-          (finalBuffer.length / 1024).toFixed(2)
-        ),
-        uploadTimeMS: Date.now() - startTime,
-        durationSec: null,
-      };
-    }
-
-    if (isVideo) {
-      const {
-        masterUrl,
-        thumbnailUrl,
-        fileName,
-        durationSec,
-        blurhash,
-      } = await convertAndUploadHLS(
-        inputPath,
-        mimeType,
-        directory
-      );
-
-      return {
-        url: masterUrl,
-        thumbnailUrl: thumbnailUrl ?? null,
-        fileName,
-        mediaType: 'video',
-        blurhash: blurhash ?? null,
-        sizeKB: Number(
-          (originalSize / 1024).toFixed(2)
-        ),
-        uploadTimeMS: Date.now() - startTime,
-        durationSec: durationSec ?? null,
-      };
-    }
+      if (isVideo) {
+        const {
+          masterUrl,
+          thumbnailUrl,
+          fileName,
+          durationSec,
+          blurhash,
+        } = await convertAndUploadHLS(
+          inputPath,
+          mimeType,
+          directory
+        );
+      
+        return {
+          url: masterUrl,
+          thumbnailUrl: thumbnailUrl ?? null,
+          fileName,
+          mediaType: 'video',
+          blurhash: blurhash ?? null,
+          sizeKB: Number(
+            (originalSize / 1024).toFixed(2)
+          ),
+          uploadTimeMS: Date.now() - startTime,
+          durationSec: durationSec ?? null,
+        };
+      }
 
     const error = new Error(
       `Unsupported media type: ${mimeType || 'unknown'}`

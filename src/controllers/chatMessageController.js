@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma.js';
 import ChatMessageService from '../services/chatMessageService.js';
+import { generateBlurHashFromImageUrl } from '../utils/blurhash-utils.js';
 
 // NOTE — the service layer now enforces membership internally on every
 // function (requireParticipant, called uniformly per spec's checklist —
@@ -8,85 +9,292 @@ import ChatMessageService from '../services/chatMessageService.js';
 // deleteMessage's case it was actively wrong (see deleteMessage below).
 
 const ChatMessageController = {
-
   async createMessage(req, res) {
     try {
-      const userId = req.user.id;
+      const userId = Number(req.user.id);
+  
       const {
         roomId,
         text,
         type,
         mediaUrl,
         thumbnailUrl,
-        blurhash,
-        fileName,
-        fileSize,
-        durationSec,
-        replyToId,
-        clientTempId
-      } = req.body;
-
-      if (!roomId) {
-        return res.status(400).json({ error: 'roomId is required' });
-      }
-
-      const newMessage = await ChatMessageService.createMessage({
-        roomId,
-        userId,
-        text,
-        type,
-        mediaUrl,
-        thumbnailUrl,
-        blurhash,
         fileName,
         fileSize,
         durationSec,
         replyToId,
         clientTempId,
-      });
-
-      const io = req.app.get('io');
-      if (io) {
-        const roomIdInt = parseInt(roomId);
-        io.to(`room:${roomIdInt}`).emit('message:new', { message: newMessage, tempId: clientTempId });
-
-        // FIX — was selecting `unreadCount`, which no longer exists on
-        // ChatRoomMember. Unread count is now computed
-        // (seqCounter - lastReadSeq), never stored (spec §7.2).
-        //
-        // We don't even need to re-fetch the room's seqCounter here: the
-        // transaction inside createMessage assigned newMessage.seq FROM
-        // that same increment, so newMessage.seq IS the room's current
-        // seqCounter. And the sender's own lastReadSeq was bumped to
-        // that same value inside that transaction — so by the time this
-        // findMany runs, the DB already reflects unreadCount 0 for the
-        // sender without any special-casing needed.
-        const members = await prisma.chatRoomMember.findMany({
-          where: { roomId: roomIdInt },
-          select: { userId: true, lastReadSeq: true },
-        });
-        members.forEach(m => {
-          io.to(`user:${m.userId}`).emit('conversation:updated', {
-            roomId: roomIdInt,
-            lastMessage: newMessage,
-            unreadCount: Math.max(0, newMessage.seq - m.lastReadSeq),
-          });
+      } = req.body;
+  
+      if (!roomId) {
+        return res.status(400).json({
+          error: 'roomId is required',
         });
       }
-
-      res.status(201).json({
+  
+      if (!type) {
+        return res.status(400).json({
+          error: 'type is required',
+        });
+      }
+  
+      const normalizedType =
+        String(type).toUpperCase();
+  
+      const allowedTypes = [
+        'TEXT',
+        'IMAGE',
+        'VIDEO',
+        'FILE',
+      ];
+  
+      if (!allowedTypes.includes(normalizedType)) {
+        return res.status(400).json({
+          error: 'Invalid message type',
+        });
+      }
+  
+      const normalizedMediaUrl =
+        typeof mediaUrl === 'string' &&
+        mediaUrl.trim().length > 0
+          ? mediaUrl.trim()
+          : null;
+  
+      if (
+        ['IMAGE', 'VIDEO', 'FILE'].includes(
+          normalizedType
+        ) &&
+        !normalizedMediaUrl
+      ) {
+        return res.status(400).json({
+          error:
+            'mediaUrl is required for media messages',
+        });
+      }
+  
+      if (
+        normalizedType === 'TEXT' &&
+        (
+          typeof text !== 'string' ||
+          text.trim().length === 0
+        )
+      ) {
+        return res.status(400).json({
+          error: 'text is required for text messages',
+        });
+      }
+  
+      let generatedBlurhash = null;
+  
+      /*
+       * Generate BlurHash only when the message is being sent.
+       *
+       * The client-provided blurhash is intentionally ignored.
+       */
+      if (
+        normalizedType === 'IMAGE' &&
+        normalizedMediaUrl
+      ) {
+        try {
+          generatedBlurhash =
+            await generateBlurHashFromImageUrl(
+              normalizedMediaUrl
+            );
+        } catch (error) {
+          console.error(
+            'Failed to generate image BlurHash:',
+            error
+          );
+  
+          return res.status(400).json({
+            error:
+              'Unable to generate BlurHash from the image URL',
+          });
+        }
+      }
+  
+      const newMessage =
+        await ChatMessageService.createMessage({
+          roomId: Number(roomId),
+          userId,
+  
+          text:
+            normalizedType === 'TEXT'
+              ? text?.trim() || null
+              : null,
+  
+          type: normalizedType,
+          mediaUrl: normalizedMediaUrl,
+          thumbnailUrl:
+            thumbnailUrl || null,
+  
+          /*
+           * This is the generated value that will be
+           * persisted in ChatMessage.blurhash.
+           */
+          blurhash: generatedBlurhash,
+  
+          fileName:
+            fileName || null,
+  
+          fileSize:
+            fileSize !== undefined &&
+            fileSize !== null
+              ? Number(fileSize)
+              : null,
+  
+          durationSec:
+            durationSec !== undefined &&
+            durationSec !== null
+              ? Number(durationSec)
+              : null,
+  
+          replyToId:
+            replyToId !== undefined &&
+            replyToId !== null
+              ? Number(replyToId)
+              : null,
+  
+          clientTempId:
+            clientTempId || null,
+        });
+  
+      const io = req.app.get('io');
+  
+      if (io) {
+        const roomIdInt = Number(roomId);
+  
+        io.to(`room:${roomIdInt}`).emit(
+          'message:new',
+          {
+            message: newMessage,
+            tempId: clientTempId || null,
+          }
+        );
+  
+        const members =
+          await prisma.chatRoomMember.findMany({
+            where: {
+              roomId: roomIdInt,
+            },
+            select: {
+              userId: true,
+              lastReadSeq: true,
+            },
+          });
+  
+        members.forEach((member) => {
+          io.to(`user:${member.userId}`).emit(
+            'conversation:updated',
+            {
+              roomId: roomIdInt,
+              lastMessage: newMessage,
+              unreadCount: Math.max(
+                0,
+                newMessage.seq -
+                  member.lastReadSeq
+              ),
+            }
+          );
+        });
+      }
+  
+      return res.status(201).json({
         message: 'Message sent successfully',
-        data: newMessage
+        data: newMessage,
       });
-
     } catch (error) {
       console.error(error);
-      const status = error.statusCode || 500;
-      res.status(status).json({
-        error: error.statusCode ? error.message : 'Failed to create message'
+  
+      const status =
+        error.statusCode || 500;
+  
+      return res.status(status).json({
+        error: error.statusCode
+          ? error.message
+          : 'Failed to create message',
       });
     }
   },
+
+  // async createMessage(req, res) {
+  //   try {
+  //     const userId = req.user.id;
+  //     const {
+  //       roomId,
+  //       text,
+  //       type,
+  //       mediaUrl,
+  //       thumbnailUrl,
+  //       blurhash,
+  //       fileName,
+  //       fileSize,
+  //       durationSec,
+  //       replyToId,
+  //       clientTempId
+  //     } = req.body;
+
+  //     if (!roomId) {
+  //       return res.status(400).json({ error: 'roomId is required' });
+  //     }
+
+  //     const newMessage = await ChatMessageService.createMessage({
+  //       roomId,
+  //       userId,
+  //       text,
+  //       type,
+  //       mediaUrl,
+  //       thumbnailUrl,
+  //       blurhash,
+  //       fileName,
+  //       fileSize,
+  //       durationSec,
+  //       replyToId,
+  //       clientTempId,
+  //     });
+
+  //     const io = req.app.get('io');
+  //     if (io) {
+  //       const roomIdInt = parseInt(roomId);
+  //       io.to(`room:${roomIdInt}`).emit('message:new', { message: newMessage, tempId: clientTempId });
+
+  //       // FIX — was selecting `unreadCount`, which no longer exists on
+  //       // ChatRoomMember. Unread count is now computed
+  //       // (seqCounter - lastReadSeq), never stored (spec §7.2).
+  //       //
+  //       // We don't even need to re-fetch the room's seqCounter here: the
+  //       // transaction inside createMessage assigned newMessage.seq FROM
+  //       // that same increment, so newMessage.seq IS the room's current
+  //       // seqCounter. And the sender's own lastReadSeq was bumped to
+  //       // that same value inside that transaction — so by the time this
+  //       // findMany runs, the DB already reflects unreadCount 0 for the
+  //       // sender without any special-casing needed.
+  //       const members = await prisma.chatRoomMember.findMany({
+  //         where: { roomId: roomIdInt },
+  //         select: { userId: true, lastReadSeq: true },
+  //       });
+  //       members.forEach(m => {
+  //         io.to(`user:${m.userId}`).emit('conversation:updated', {
+  //           roomId: roomIdInt,
+  //           lastMessage: newMessage,
+  //           unreadCount: Math.max(0, newMessage.seq - m.lastReadSeq),
+  //         });
+  //       });
+  //     }
+
+  //     res.status(201).json({
+  //       message: 'Message sent successfully',
+  //       data: newMessage
+  //     });
+
+  //   } catch (error) {
+  //     console.error(error);
+  //     const status = error.statusCode || 500;
+  //     res.status(status).json({
+  //       error: error.statusCode ? error.message : 'Failed to create message'
+  //     });
+  //   }
+  // },
 
   async uploadMedia(req, res) {
     try {
