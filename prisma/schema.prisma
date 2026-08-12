@@ -820,3 +820,31 @@ model Report {
 
   @@index([reportedId])
 }
+
+
+enum WaitlistStatus {
+  WAITING
+  INVITED
+  JOINED
+  UNSUBSCRIBED
+}
+
+model WaitlistEntry {
+  id           Int            @id @default(autoincrement())
+  email        String         @unique
+  fullname     String?
+  role         Role?
+  country      String?
+  phone        String?
+  source       String?
+  status       WaitlistStatus @default(WAITING)
+  consent      Boolean        @default(false)
+  ipHash       String?
+  userAgent    String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  invitedAt    DateTime?
+
+  @@index([status])
+  @@index([createdAt])
+}

@@ -258,55 +258,127 @@ const ChatMessageService = {
       throw error;
     }
   
+    roomId = Number.parseInt(roomId, 10);
+    userId = Number.parseInt(userId, 10);
+  
+    if (!Number.isInteger(roomId) || roomId <= 0) {
+      const error = new Error(
+        'Invalid room ID'
+      );
+  
+      error.statusCode = 400;
+      throw error;
+    }
+  
+    if (!Number.isInteger(userId) || userId <= 0) {
+      const error = new Error(
+        'Invalid user ID'
+      );
+  
+      error.statusCode = 400;
+      throw error;
+    }
+  
     await requireParticipant(
-      parseInt(roomId, 10),
-      parseInt(userId, 10)
+      roomId,
+      userId
     );
   
-    const uploaded =
-      await uploadMediaToGCS(
+    let uploaded;
+  
+    try {
+      uploaded = await uploadMediaToGCS(
         file,
         `chat-media/${roomId}`
       );
+    } catch (error) {
+      console.error(
+        'uploadMediaToGCS failed inside ChatMessageService:',
+        {
+          message: error.message,
+          stack: error.stack,
+          roomId,
+          userId,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          filePath: file.path,
+        }
+      );
+  
+      throw error;
+    }
   
     return {
       url: uploaded.url,
+  
       thumbnailUrl:
         uploaded.thumbnailUrl ?? null,
   
       /*
-       * Image BlurHash is generated when the
-       * ChatMessage is created, not here.
+       * Important:
+       * Preserve the BlurHash returned by multer.
+       * Videos receive their BlurHash from the generated
+       * video thumbnail. Images may still be generated
+       * later by the controller.
        */
-      blurhash: null,
+      blurhash:
+        uploaded.blurhash ?? null,
   
-      mediaType: uploaded.mediaType,
-      fileName: file.originalname,
-      fileSize: file.size,
+      mediaType:
+        uploaded.mediaType,
+  
+      fileName:
+        file.originalname,
+  
+      fileSize:
+        file.size,
+  
       durationSec:
         uploaded.durationSec ?? null,
     };
   },
 
-  // async uploadMediaOnly({ roomId, userId, file }) {
+  // async uploadMediaOnly({
+  //   roomId,
+  //   userId,
+  //   file,
+  // }) {
   //   if (!file) {
-  //     const error = new Error('No media file provided');
+  //     const error = new Error(
+  //       'No media file provided'
+  //     );
+  
   //     error.statusCode = 400;
   //     throw error;
   //   }
   
-  //   await requireParticipant(parseInt(roomId), parseInt(userId));
+  //   await requireParticipant(
+  //     parseInt(roomId, 10),
+  //     parseInt(userId, 10)
+  //   );
   
-  //   const uploaded = await uploadMediaToGCS(file, `chat-media/${roomId}`);
+  //   const uploaded =
+  //     await uploadMediaToGCS(
+  //       file,
+  //       `chat-media/${roomId}`
+  //     );
   
   //   return {
   //     url: uploaded.url,
-  //     thumbnailUrl: uploaded.thumbnailUrl ?? null,
-  //     blurhash: uploaded.blurhash ?? null,
+  //     thumbnailUrl:
+  //       uploaded.thumbnailUrl ?? null,
+  
+  //     /*
+  //      * Image BlurHash is generated when the
+  //      * ChatMessage is created, not here.
+  //      */
+  //     blurhash: null,
+  
   //     mediaType: uploaded.mediaType,
   //     fileName: file.originalname,
   //     fileSize: file.size,
-  //     durationSec: uploaded.durationSec ?? null,
+  //     durationSec:
+  //       uploaded.durationSec ?? null,
   //   };
   // },
 
