@@ -96,7 +96,7 @@ app.use(`${api}/videos`, videoRouters);
 app.use(`${api}/videoViews`, videoViewRouters);
 app.use(`${api}/videoCategory`, videoCategory);
 app.use(`${api}/reels`, reelRouters);
-app.use(`${api}/waitlist`, waitlistRouters)
+app.use(`${api}/waitlist`, waitlistRouters);
 
 // ─── 404 Handler ──────────────────────────────────────────────
 app.use((req, res) => {
