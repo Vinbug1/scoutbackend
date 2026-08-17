@@ -2,7 +2,7 @@ import express from "express";
 import {
   create,
   getAll,
-} from "../controllers/waitlisCcontroller.js";
+} from "../controllers/waitlistCcontroller.js";
 
 const router = express.Router();
 
