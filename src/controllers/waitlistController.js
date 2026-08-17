@@ -1,102 +1,65 @@
-import waitlistService from '../services/waitlistService.js';
-
-const getClientIp = (req) => {
-  // Only trust x-forwarded-for when your proxy is configured correctly.
-  return (
-    req.ip ||
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-    'unknown'
-  );
-};
-
-const waitlistController = {
-  async join(req, res, next) {
+import {
+    createWaitlistEntry,
+    getAllWaitlistEntries,
+  } from "../services/waitlist.service.js";
+  
+  export const create = async (req, res) => {
     try {
-      const {
+      const { email, fullname, country, phone, age } = req.body;
+  
+      // Basic validation
+      if (!email || !fullname || !country || !phone || !age) {
+        return res.status(400).json({
+          success: false,
+          message: "All fields are required",
+        });
+      }
+  
+      const entry = await createWaitlistEntry({
         email,
         fullname,
-        role,
         country,
         phone,
-        consent,
-        source,
-        turnstileToken,
-      } = req.body;
-
-      const result = await waitlistService.join({
-        email,
-        fullname,
-        role,
-        country,
-        phone,
-        consent,
-        source,
-        turnstileToken,
-        ip: getClientIp(req),
-        userAgent: req.headers['user-agent'],
+        age,
       });
-
-      return res.status(result.alreadyJoined ? 200 : 201).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getAll(req, res, next) {
-    try {
-      const { page = 1, limit = 20, status } = req.query;
-
-      const result = await waitlistService.getAll({
-        page,
-        limit,
-        status,
+  
+      return res.status(201).json({
+        success: true,
+        message: "Successfully added to the waitlist",
+        data: entry,
       });
-
-      return res.status(200).json(result);
     } catch (error) {
-      next(error);
+      console.error("Create waitlist entry error:", error);
+  
+      if (error.message === "Email is already on the waitlist") {
+        return res.status(409).json({
+          success: false,
+          message: error.message,
+        });
+      }
+  
+      return res.status(500).json({
+        success: false,
+        message: "Failed to add entry to waitlist",
+      });
     }
-  },
-
-  async getById(req, res, next) {
+  };
+  
+  export const getAll = async (req, res) => {
     try {
-      const result = await waitlistService.getById(req.params.id);
-
+      const entries = await getAllWaitlistEntries();
+  
       return res.status(200).json({
-        data: result,
+        success: true,
+        message: "Waitlist entries retrieved successfully",
+        data: entries,
       });
     } catch (error) {
-      next(error);
-    }
-  },
-
-  async updateStatus(req, res, next) {
-    try {
-      const { status } = req.body;
-
-      const result = await waitlistService.updateStatus(
-        req.params.id,
-        status
-      );
-
-      return res.status(200).json({
-        message: 'Waitlist status updated',
-        data: result,
+      console.error("Get waitlist entries error:", error);
+  
+      return res.status(500).json({
+        success: false,
+        message: "Failed to retrieve waitlist entries",
       });
-    } catch (error) {
-      next(error);
     }
-  },
-
-  async remove(req, res, next) {
-    try {
-      const result = await waitlistService.remove(req.params.id);
-
-      return res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
-};
-
-export default waitlistController;
+  };
