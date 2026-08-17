@@ -28,7 +28,7 @@ import videoViewRouters from './src/routes/videoViewRouters.js';
 import swaggerSpec from './src/config/swagger.js';
 import videoCategory from './src/routes/videoCategoryRoutes.js';
 import reelRouters from './src/routes/reelRoutes.js';
-import waitlistRouters from './routes/waitlistRoutes.js';
+import waitlistRouters from './src/routes/waitlistRoutes.js';
 
 
 import { initSocketServer } from './src/sockets/index.js';
@@ -96,7 +96,7 @@ app.use(`${api}/videos`, videoRouters);
 app.use(`${api}/videoViews`, videoViewRouters);
 app.use(`${api}/videoCategory`, videoCategory);
 app.use(`${api}/reels`, reelRouters);
-app.use(`${api}/waitlist`, waitlistRouters)
+app.use(`${api}/waitlist`, waitlistRouters);
 
 // ─── 404 Handler ──────────────────────────────────────────────
 app.use((req, res) => {
