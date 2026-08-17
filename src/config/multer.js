@@ -40,6 +40,19 @@ const ALLOWED_VIDEO_EXT = [
   '.ts',
 ];
 
+// Voice notes are strictly .m4a for now. General audio (broader formats)
+// will get its own allowlist when document uploads are built.
+const ALLOWED_VOICE_NOTE_MIME = [
+  'audio/mp4',
+  'audio/x-m4a',
+  'audio/m4a',
+  'audio/aac',
+];
+
+const ALLOWED_VOICE_NOTE_EXT = [
+  '.m4a',
+];
+
 const multerStorage = multer.diskStorage({
   destination: (_req, _file, callback) => {
     callback(null, os.tmpdir());
@@ -78,17 +91,21 @@ export const upload = multer({
       ALLOWED_VIDEO_MIME.includes(file.mimetype) &&
       ALLOWED_VIDEO_EXT.includes(extension);
 
-    if (!isImage && !isVideo) {
+    const isVoiceNote =
+      ALLOWED_VOICE_NOTE_MIME.includes(file.mimetype) &&
+      ALLOWED_VOICE_NOTE_EXT.includes(extension);
+
+    if (!isImage && !isVideo && !isVoiceNote) {
       return callback(
         new Error(
-          'Invalid file. Allowed: JPEG, PNG, MP4, MOV, AVI, WEBM, MPEG, M3U8, or TS.'
+          'Invalid file. Allowed: JPEG, PNG, MP4, MOV, AVI, WEBM, MPEG, M3U8, TS, or M4A.'
         ),
         false
       );
     }
 
     callback(null, true);
-  },
+  }
 });
 
 const sanitizeFileName = (name) =>
@@ -452,16 +469,16 @@ const convertAndUploadHLS = async (
 
     let blurhash = null;
 
-try {
-  blurhash = await generateBlurHash(
-    compressedThumbnail
-  );
-} catch (error) {
-  console.error(
-    'Video BlurHash generation failed:',
-    error
-  );
-}
+    try {
+      blurhash = await generateBlurHash(
+        compressedThumbnail
+      );
+    } catch (error) {
+      console.error(
+        'Video BlurHash generation failed:',
+        error
+      );
+    }
 
     const prefix = sanitizeFileName(
       `${directory}/${sessionId}`
@@ -531,6 +548,33 @@ try {
   }
 };
 
+const getAudioDurationSec = (inputPath) =>
+  new Promise((resolve) => {
+    ffmpeg.ffprobe(inputPath, (_error, metadata) => {
+      const duration = metadata?.format?.duration;
+      resolve(duration ? Math.round(duration) : null);
+    });
+  });
+
+const uploadVoiceNote = async (inputPath, directory) => {
+  const durationSec = await getAudioDurationSec(inputPath);
+  const buffer = fs.readFileSync(inputPath);
+
+  const fileName = sanitizeFileName(
+    `${directory}/${uuidv4()}.m4a`
+  );
+
+  await uploadBufferToGCS(buffer, fileName, 'audio/mp4');
+
+  return {
+    url: `https://storage.googleapis.com/${bucket.name}/${fileName}`,
+    thumbnailUrl: null,
+    fileName,
+    durationSec,
+    blurhash: null,
+  };
+};
+
 export const uploadMediaToGCS = async (
   input,
   directory = 'uploads'
@@ -597,6 +641,17 @@ export const uploadMediaToGCS = async (
     throw error;
   }
 
+  // Keep the client-declared mimetype/extension around. File-sniffing
+  // below can misclassify an audio-only .m4a container as generic
+  // video/mp4 (they share the same ISO-BMFF box structure), so these
+  // are used as a fallback signal when deciding isAudio further down.
+  const declaredMimeType = mimeType;
+
+  const declaredExtension =
+    input?.originalname
+      ? path.extname(input.originalname).toLowerCase()
+      : null;
+
   try {
     if (!fs.existsSync(inputPath)) {
       const error = new Error(
@@ -659,6 +714,25 @@ export const uploadMediaToGCS = async (
         mimeType === 'application/x-mpegurl'
       );
 
+    // A .m4a voice note and a generic .mp4 share the same container
+    // format, so byte-sniffing can occasionally return 'video/mp4' or
+    // 'audio/mp4' for either one. If that happens, fall back to what
+    // the client declared (extension for multer uploads, mimetype for
+    // base64 data URIs) to decide whether this is really a voice note.
+    const sniffedAsGenericMp4Family =
+      mimeType === 'video/mp4' || mimeType === 'audio/mp4';
+
+    const declaredAsVoiceNote =
+      declaredExtension === '.m4a' ||
+      ALLOWED_VOICE_NOTE_MIME.includes(declaredMimeType);
+
+    const isAudio =
+      typeof mimeType === 'string' &&
+      (
+        ALLOWED_VOICE_NOTE_MIME.includes(mimeType) ||
+        (sniffedAsGenericMp4Family && declaredAsVoiceNote)
+      );
+
       if (isImage) {
         if (!ALLOWED_IMAGE_MIME.includes(mimeType)) {
           const error = new Error(
@@ -711,6 +785,29 @@ export const uploadMediaToGCS = async (
       
           uploadTimeMS: Date.now() - startTime,
           durationSec: null,
+        };
+      }
+
+      if (isAudio) {
+        const {
+          url,
+          durationSec,
+        } = await uploadVoiceNote(
+          inputPath,
+          directory
+        );
+
+        return {
+          url,
+          thumbnailUrl: null,
+          fileName: path.basename(url),
+          mediaType: 'audio',
+          blurhash: null,
+          sizeKB: Number(
+            (originalSize / 1024).toFixed(2)
+          ),
+          uploadTimeMS: Date.now() - startTime,
+          durationSec: durationSec ?? null,
         };
       }
 
@@ -871,13 +968,6 @@ export const uploadBase64MediaToGCS = (
     directory
   );
 
-  
-
-
-
-
-
-
 
 
 
@@ -935,6 +1025,19 @@ export const uploadBase64MediaToGCS = (
 //   '.ts',
 // ];
 
+// // Voice notes are strictly .m4a for now. General audio (broader formats)
+// // will get its own allowlist when document uploads are built.
+// const ALLOWED_VOICE_NOTE_MIME = [
+//   'audio/mp4',
+//   'audio/x-m4a',
+//   'audio/m4a',
+//   'audio/aac',
+// ];
+
+// const ALLOWED_VOICE_NOTE_EXT = [
+//   '.m4a',
+// ];
+
 // const multerStorage = multer.diskStorage({
 //   destination: (_req, _file, callback) => {
 //     callback(null, os.tmpdir());
@@ -960,6 +1063,31 @@ export const uploadBase64MediaToGCS = (
 //     fileSize: 500 * 1024 * 1024,
 //   },
 
+//   // fileFilter: (_req, file, callback) => {
+//   //   const extension = path
+//   //     .extname(file.originalname)
+//   //     .toLowerCase();
+
+//   //   const isImage =
+//   //     ALLOWED_IMAGE_MIME.includes(file.mimetype) &&
+//   //     ALLOWED_IMAGE_EXT.includes(extension);
+
+//   //   const isVideo =
+//   //     ALLOWED_VIDEO_MIME.includes(file.mimetype) &&
+//   //     ALLOWED_VIDEO_EXT.includes(extension);
+
+//   //   if (!isImage && !isVideo) {
+//   //     return callback(
+//   //       new Error(
+//   //         'Invalid file. Allowed: JPEG, PNG, MP4, MOV, AVI, WEBM, MPEG, M3U8, or TS.'
+//   //       ),
+//   //       false
+//   //     );
+//   //   }
+
+//   //   callback(null, true);
+//   // },
+
 //   fileFilter: (_req, file, callback) => {
 //     const extension = path
 //       .extname(file.originalname)
@@ -973,17 +1101,21 @@ export const uploadBase64MediaToGCS = (
 //       ALLOWED_VIDEO_MIME.includes(file.mimetype) &&
 //       ALLOWED_VIDEO_EXT.includes(extension);
 
-//     if (!isImage && !isVideo) {
+//     const isVoiceNote =
+//       ALLOWED_VOICE_NOTE_MIME.includes(file.mimetype) &&
+//       ALLOWED_VOICE_NOTE_EXT.includes(extension);
+
+//     if (!isImage && !isVideo && !isVoiceNote) {
 //       return callback(
 //         new Error(
-//           'Invalid file. Allowed: JPEG, PNG, MP4, MOV, AVI, WEBM, MPEG, M3U8, or TS.'
+//           'Invalid file. Allowed: JPEG, PNG, MP4, MOV, AVI, WEBM, MPEG, M3U8, TS, or M4A.'
 //         ),
 //         false
 //       );
 //     }
 
 //     callback(null, true);
-//   },
+//   }
 // });
 
 // const sanitizeFileName = (name) =>
@@ -1426,6 +1558,33 @@ export const uploadBase64MediaToGCS = (
 //   }
 // };
 
+// const getAudioDurationSec = (inputPath) =>
+//   new Promise((resolve) => {
+//     ffmpeg.ffprobe(inputPath, (_error, metadata) => {
+//       const duration = metadata?.format?.duration;
+//       resolve(duration ? Math.round(duration) : null);
+//     });
+//   });
+
+// const uploadVoiceNote = async (inputPath, directory) => {
+//   const durationSec = await getAudioDurationSec(inputPath);
+//   const buffer = fs.readFileSync(inputPath);
+
+//   const fileName = sanitizeFileName(
+//     `${directory}/${uuidv4()}.m4a`
+//   );
+
+//   await uploadBufferToGCS(buffer, fileName, 'audio/mp4');
+
+//   return {
+//     url: `https://storage.googleapis.com/${bucket.name}/${fileName}`,
+//     thumbnailUrl: null,
+//     fileName,
+//     durationSec,
+//     blurhash: null,
+//   };
+// };
+
 // export const uploadMediaToGCS = async (
 //   input,
 //   directory = 'uploads'
@@ -1606,6 +1765,29 @@ export const uploadBase64MediaToGCS = (
       
 //           uploadTimeMS: Date.now() - startTime,
 //           durationSec: null,
+//         };
+//       }
+
+//       if (isAudio) {
+//         const {
+//           url,
+//           durationSec,
+//         } = await uploadVoiceNote(
+//           inputPath,
+//           directory
+//         );
+
+//         return {
+//           url,
+//           thumbnailUrl: null,
+//           fileName: path.basename(url),
+//           mediaType: 'audio',
+//           blurhash: null,
+//           sizeKB: Number(
+//             (originalSize / 1024).toFixed(2)
+//           ),
+//           uploadTimeMS: Date.now() - startTime,
+//           durationSec: durationSec ?? null,
 //         };
 //       }
 
