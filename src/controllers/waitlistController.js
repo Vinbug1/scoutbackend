@@ -1,7 +1,7 @@
 import {
     createWaitlistEntry,
     getAllWaitlistEntries,
-  } from "../services/waitlist.service.js";
+  } from "../services/waitlistService.js";
   
   export const create = async (req, res) => {
     try {
