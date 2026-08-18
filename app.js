@@ -41,9 +41,12 @@ const PORT = process.env.PORT || 4000;
 
 // ─── Allowed Origins (shared between REST CORS and Socket.io CORS) ────
 // TODO: replace/extend with your actual production + staging + mobile origins.
+// In your main server file (where you define allowedOrigins)
 const allowedOrigins = [
   'https://thescouterpro.com',
   'https://www.thescouterpro.com',
+  'http://localhost:3000',        // ← add this
+  'http://127.0.0.1:3000',       // optional, if you use this too
 ];
 
 // ─── Middleware ───────────────────────────────────────────────
