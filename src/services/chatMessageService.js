@@ -97,155 +97,537 @@ const ChatMessageService = {
     replyToId,
     clientTempId,
   }) {
-    roomId = parseInt(roomId);
-    userId = parseInt(userId);
-
-    if (!['TEXT', 'IMAGE', 'VIDEO', 'FILE','AUDIO'].includes(type)) {
-      const error = new Error('Invalid message type');
+    const normalizedRoomId =
+      Number.parseInt(roomId, 10);
+  
+    const normalizedUserId =
+      Number.parseInt(userId, 10);
+  
+    if (
+      !Number.isInteger(
+        normalizedRoomId
+      ) ||
+      normalizedRoomId <= 0
+    ) {
+      const error = new Error(
+        'Invalid room ID'
+      );
+  
       error.statusCode = 400;
       throw error;
     }
-
-    const room = await prisma.chatRoom.findUnique({
-      where: { id: roomId },
-      include: { members: true },
-    });
-
+  
+    if (
+      !Number.isInteger(
+        normalizedUserId
+      ) ||
+      normalizedUserId <= 0
+    ) {
+      const error = new Error(
+        'Invalid user ID'
+      );
+  
+      error.statusCode = 400;
+      throw error;
+    }
+  
+    const normalizedType =
+      String(type).toUpperCase();
+  
+    const allowedTypes = [
+      'TEXT',
+      'IMAGE',
+      'VIDEO',
+      'AUDIO',
+      'FILE',
+    ];
+  
+    if (
+      !allowedTypes.includes(
+        normalizedType
+      )
+    ) {
+      const error = new Error(
+        'Invalid message type'
+      );
+  
+      error.statusCode = 400;
+      throw error;
+    }
+  
+    const normalizedText =
+      typeof text === 'string' &&
+      text.trim().length > 0
+        ? text.trim()
+        : null;
+  
+    const normalizedMediaUrl =
+      typeof mediaUrl === 'string' &&
+      mediaUrl.trim().length > 0
+        ? mediaUrl.trim()
+        : null;
+  
+    const normalizedThumbnailUrl =
+      typeof thumbnailUrl === 'string' &&
+      thumbnailUrl.trim().length > 0
+        ? thumbnailUrl.trim()
+        : null;
+  
+    const normalizedFileName =
+      typeof fileName === 'string' &&
+      fileName.trim().length > 0
+        ? fileName.trim()
+        : null;
+  
+    const normalizedClientTempId =
+      typeof clientTempId === 'string' &&
+      clientTempId.trim().length > 0
+        ? clientTempId.trim()
+        : null;
+  
+    if (
+      normalizedType === 'TEXT' &&
+      !normalizedText
+    ) {
+      const error = new Error(
+        'Message content is required for text messages'
+      );
+  
+      error.statusCode = 400;
+      throw error;
+    }
+  
+    if (
+      normalizedType !== 'TEXT' &&
+      !normalizedMediaUrl
+    ) {
+      const error = new Error(
+        'mediaUrl is required for media messages'
+      );
+  
+      error.statusCode = 400;
+      throw error;
+    }
+  
+    /*
+     * fileSize is Int? in Prisma.
+     */
+    const normalizedFileSize =
+      fileSize === undefined ||
+      fileSize === null ||
+      fileSize === ''
+        ? null
+        : Number(fileSize);
+  
+    if (
+      normalizedFileSize !== null &&
+      (
+        !Number.isInteger(
+          normalizedFileSize
+        ) ||
+        normalizedFileSize < 0
+      )
+    ) {
+      const error = new Error(
+        'Invalid fileSize'
+      );
+  
+      error.statusCode = 400;
+      throw error;
+    }
+  
+    /*
+     * durationSec is Float? in Prisma.
+     */
+    const normalizedDurationSec =
+      durationSec === undefined ||
+      durationSec === null ||
+      durationSec === ''
+        ? null
+        : Number(durationSec);
+  
+    if (
+      normalizedDurationSec !== null &&
+      (
+        !Number.isFinite(
+          normalizedDurationSec
+        ) ||
+        normalizedDurationSec < 0
+      )
+    ) {
+      const error = new Error(
+        'Invalid durationSec'
+      );
+  
+      error.statusCode = 400;
+      throw error;
+    }
+  
+    /*
+     * BlurHash should only be saved for an
+     * IMAGE message. The controller generates
+     * it from the stored image URL.
+     */
+    const normalizedBlurhash =
+      normalizedType === 'IMAGE' &&
+      typeof blurhash === 'string' &&
+      blurhash.trim().length > 0
+        ? blurhash.trim()
+        : null;
+  
+    const room =
+      await prisma.chatRoom.findUnique({
+        where: {
+          id: normalizedRoomId,
+        },
+        include: {
+          members: true,
+        },
+      });
+  
     if (!room) {
-      const error = new Error('Chat room not found');
+      const error = new Error(
+        'Chat room not found'
+      );
+  
       error.statusCode = 404;
       throw error;
     }
-
-    const isMember = room.members.some(m => m.userId === userId);
+  
+    const isMember =
+      room.members.some(
+        (member) =>
+          member.userId ===
+          normalizedUserId
+      );
+  
     if (!isMember) {
-      const error = new Error('You are not a member of this room');
+      const error = new Error(
+        'You are not a member of this room'
+      );
+  
       error.statusCode = 403;
       throw error;
     }
-
-    const otherMembers = room.members.filter(m => m.userId !== userId);
+  
+    const otherMembers =
+      room.members.filter(
+        (member) =>
+          member.userId !==
+          normalizedUserId
+      );
+  
     for (const other of otherMembers) {
-      const blocked = await prisma.block.findFirst({
-        where: {
-          OR: [
-            { blockerId: userId, blockedId: other.userId },
-            { blockerId: other.userId, blockedId: userId },
-          ],
-        },
-      });
-
+      const blocked =
+        await prisma.block.findFirst({
+          where: {
+            OR: [
+              {
+                blockerId:
+                  normalizedUserId,
+  
+                blockedId:
+                  other.userId,
+              },
+              {
+                blockerId:
+                  other.userId,
+  
+                blockedId:
+                  normalizedUserId,
+              },
+            ],
+          },
+        });
+  
       if (blocked) {
-        const error = new Error('Cannot send messages to this user');
+        const error = new Error(
+          'Cannot send messages to this user'
+        );
+  
         error.statusCode = 403;
         throw error;
       }
     }
-
-    if (type === 'TEXT' && !text?.trim()) {
-      const error = new Error('Message content is required for text messages');
-      error.statusCode = 400;
-      throw error;
-    }
-
-    if (type !== 'TEXT' && !mediaUrl) {
-      const error = new Error('mediaUrl is required for media messages');
-      error.statusCode = 400;
-      throw error;
-    }
-
-    let validReplyToId, replyToPreview, replyToSenderId;
-    if (replyToId) {
-      const original = await prisma.chatMessage.findUnique({
-        where: { id: parseInt(replyToId) },
-        select: { id: true, roomId: true, text: true, type: true, fileName: true, userId: true, deletedAt: true },
-      });
-
-      if (original && original.roomId === roomId) {
-        validReplyToId = original.id;
-        replyToPreview = previewFor(original);
-        replyToSenderId = original.userId;
+  
+    let validReplyToId = null;
+    let replyToPreview = null;
+    let replyToSenderId = null;
+  
+    if (
+      replyToId !== undefined &&
+      replyToId !== null &&
+      replyToId !== ''
+    ) {
+      const replyId =
+        Number.parseInt(
+          replyToId,
+          10
+        );
+  
+      if (
+        Number.isInteger(replyId) &&
+        replyId > 0
+      ) {
+        const original =
+          await prisma.chatMessage.findUnique({
+            where: {
+              id: replyId,
+            },
+            select: {
+              id: true,
+              roomId: true,
+              text: true,
+              type: true,
+              fileName: true,
+              userId: true,
+              deletedAt: true,
+            },
+          });
+  
+        /*
+         * Ignore replies that reference a
+         * message in another room.
+         */
+        if (
+          original &&
+          original.roomId ===
+            normalizedRoomId
+        ) {
+          validReplyToId =
+            original.id;
+  
+          replyToPreview =
+            previewFor(original);
+  
+          replyToSenderId =
+            original.userId;
+        }
       }
     }
-
+  
     let newMessage;
+  
     try {
-      newMessage = await prisma.$transaction(async (tx) => {
-        const updatedRoom = await tx.chatRoom.update({
-          where: { id: roomId },
-          data: { seqCounter: { increment: 1 } },
-          select: { seqCounter: true },
-        });
-
-        const created = await tx.chatMessage.create({
-          data: {
-            roomId,
-            userId,
-            seq: updatedRoom.seqCounter,
-            text,
-            type,
-            mediaUrl,
-            thumbnailUrl,
-            blurhash,
-            fileName,
-            fileSize,
-            durationSec,
-            replyToId: validReplyToId,
-            replyToPreview,
-            replyToSenderId,
-            clientTempId,
+      newMessage =
+        await prisma.$transaction(
+          async (tx) => {
+            const updatedRoom =
+              await tx.chatRoom.update({
+                where: {
+                  id: normalizedRoomId,
+                },
+                data: {
+                  seqCounter: {
+                    increment: 1,
+                  },
+                },
+                select: {
+                  seqCounter: true,
+                },
+              });
+  
+            const created =
+              await tx.chatMessage.create({
+                data: {
+                  roomId:
+                    normalizedRoomId,
+  
+                  userId:
+                    normalizedUserId,
+  
+                  seq:
+                    updatedRoom.seqCounter,
+  
+                  clientTempId:
+                    normalizedClientTempId,
+  
+                  type:
+                    normalizedType,
+  
+                  text:
+                    normalizedType === 'TEXT'
+                      ? normalizedText
+                      : null,
+  
+                  mediaUrl:
+                    normalizedMediaUrl,
+  
+                  thumbnailUrl:
+                    normalizedThumbnailUrl,
+  
+                  blurhash:
+                    normalizedBlurhash,
+  
+                  fileName:
+                    normalizedFileName,
+  
+                  fileSize:
+                    normalizedFileSize,
+  
+                  durationSec:
+                    normalizedDurationSec,
+  
+                  replyToId:
+                    validReplyToId,
+  
+                  replyToPreview,
+  
+                  replyToSenderId,
+                },
+  
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      fullname: true,
+                      email: true,
+                    },
+                  },
+  
+                  room: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+  
+                  replyTo: {
+                    select: {
+                      id: true,
+                      text: true,
+                      type: true,
+                      userId: true,
+                    },
+                  },
+                },
+              });
+  
+            await tx.chatLastMessage.upsert({
+              where: {
+                roomId:
+                  normalizedRoomId,
+              },
+  
+              create: {
+                roomId:
+                  normalizedRoomId,
+  
+                messageId:
+                  created.id,
+  
+                senderId:
+                  normalizedUserId,
+  
+                seq:
+                  created.seq,
+  
+                preview:
+                  previewFor(created),
+              },
+  
+              update: {
+                messageId:
+                  created.id,
+  
+                senderId:
+                  normalizedUserId,
+  
+                seq:
+                  created.seq,
+  
+                preview:
+                  previewFor(created),
+              },
+            });
+  
+            await tx.chatRoomMember.updateMany({
+              where: {
+                roomId:
+                  normalizedRoomId,
+  
+                userId:
+                  normalizedUserId,
+  
+                lastReadSeq: {
+                  lt: created.seq,
+                },
+              },
+  
+              data: {
+                lastReadSeq:
+                  created.seq,
+              },
+            });
+  
+            return created;
           },
-          include: {
-            user: { select: { id: true, fullname: true, email: true } },
-            room: { select: { id: true, name: true } },
-            replyTo: { select: { id: true, text: true, type: true, userId: true } },
-          },
-        });
-
-        await tx.chatLastMessage.upsert({
-          where: { roomId },
-          create: {
-            roomId,
-            messageId: created.id,
-            senderId: userId,
-            seq: created.seq,
-            preview: previewFor(created),
-          },
-          update: {
-            messageId: created.id,
-            senderId: userId,
-            seq: created.seq,
-            preview: previewFor(created),
-          },
-        });
-
-        await tx.chatRoomMember.updateMany({
-          where: { roomId, userId, lastReadSeq: { lt: created.seq } },
-          data: { lastReadSeq: created.seq },
-        });
-
-        return created;
-      });
-    } catch (err) {
-      if (err.code === 'P2002' && clientTempId) {
-        newMessage = await prisma.chatMessage.findUnique({
-          where: { roomId_userId_clientTempId: { roomId, userId, clientTempId } },
-          include: {
-            user: { select: { id: true, fullname: true, email: true } },
-            room: { select: { id: true, name: true } },
-            replyTo: { select: { id: true, text: true, type: true, userId: true } },
-          },
-        });
-
-        if (!newMessage) throw err;
+          {
+            isolationLevel:
+              'Serializable',
+          }
+        );
+    } catch (error) {
+      /*
+       * Return the existing message for
+       * an idempotent retry.
+       */
+      if (
+        error.code === 'P2002' &&
+        normalizedClientTempId
+      ) {
+        newMessage =
+          await prisma.chatMessage.findUnique({
+            where: {
+              roomId_userId_clientTempId: {
+                roomId:
+                  normalizedRoomId,
+  
+                userId:
+                  normalizedUserId,
+  
+                clientTempId:
+                  normalizedClientTempId,
+              },
+            },
+  
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  fullname: true,
+                  email: true,
+                },
+              },
+  
+              room: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+  
+              replyTo: {
+                select: {
+                  id: true,
+                  text: true,
+                  type: true,
+                  userId: true,
+                },
+              },
+            },
+          });
+  
+        if (!newMessage) {
+          throw error;
+        }
       } else {
-        throw err;
+        throw error;
       }
     }
-
+  
     return newMessage;
   },
-
   async uploadMediaOnly({
     roomId,
     userId,
@@ -260,10 +642,18 @@ const ChatMessageService = {
       throw error;
     }
   
-    roomId = Number.parseInt(roomId, 10);
-    userId = Number.parseInt(userId, 10);
+    const normalizedRoomId =
+      Number.parseInt(roomId, 10);
   
-    if (!Number.isInteger(roomId) || roomId <= 0) {
+    const normalizedUserId =
+      Number.parseInt(userId, 10);
+  
+    if (
+      !Number.isInteger(
+        normalizedRoomId
+      ) ||
+      normalizedRoomId <= 0
+    ) {
       const error = new Error(
         'Invalid room ID'
       );
@@ -272,7 +662,12 @@ const ChatMessageService = {
       throw error;
     }
   
-    if (!Number.isInteger(userId) || userId <= 0) {
+    if (
+      !Number.isInteger(
+        normalizedUserId
+      ) ||
+      normalizedUserId <= 0
+    ) {
       const error = new Error(
         'Invalid user ID'
       );
@@ -282,49 +677,34 @@ const ChatMessageService = {
     }
   
     await requireParticipant(
-      roomId,
-      userId
+      normalizedRoomId,
+      normalizedUserId
     );
   
-    let uploaded;
-  
-    try {
-      uploaded = await uploadMediaToGCS(
+    const uploaded =
+      await uploadMediaToGCS(
         file,
-        `chat-media/${roomId}`
+        `chat-media/${normalizedRoomId}`
       );
-    } catch (error) {
-      console.error(
-        'uploadMediaToGCS failed inside ChatMessageService:',
-        {
-          message: error.message,
-          stack: error.stack,
-          roomId,
-          userId,
-          originalName: file.originalname,
-          mimeType: file.mimetype,
-          filePath: file.path,
-        }
-      );
-  
-      throw error;
-    }
   
     return {
       url: uploaded.url,
   
       thumbnailUrl:
-        uploaded.thumbnailUrl ?? null,
+        uploaded.thumbnailUrl ??
+        null,
   
       /*
-       * Important:
-       * Preserve the BlurHash returned by multer.
-       * Videos receive their BlurHash from the generated
-       * video thumbnail. Images may still be generated
-       * later by the controller.
+       * Images generate BlurHash in the
+       * create-message controller.
+       *
+       * Videos can keep the BlurHash generated
+       * from their thumbnail.
        */
       blurhash:
-        uploaded.blurhash ?? null,
+        uploaded.mediaType === 'video'
+          ? uploaded.blurhash ?? null
+          : null,
   
       mediaType:
         uploaded.mediaType,
@@ -336,10 +716,10 @@ const ChatMessageService = {
         file.size,
   
       durationSec:
-        uploaded.durationSec ?? null,
+        uploaded.durationSec ??
+        null,
     };
   },
-
   async getMessages({ roomId, userId, page = 1, limit = 20 }) {
     roomId = parseInt(roomId);
     userId = parseInt(userId);
