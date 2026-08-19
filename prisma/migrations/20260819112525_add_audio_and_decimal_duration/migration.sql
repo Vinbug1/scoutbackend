@@ -1,0 +1,8 @@
+-- AlterEnum
+ALTER TYPE "MessageType" ADD VALUE 'AUDIO';
+
+-- AlterTable
+ALTER TABLE "ChatMessage" ALTER COLUMN "durationSec" SET DATA TYPE DOUBLE PRECISION;
+
+-- AlterTable
+ALTER TABLE "Video" ALTER COLUMN "durationSec" SET DATA TYPE DOUBLE PRECISION;
