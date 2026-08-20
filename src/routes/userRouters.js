@@ -400,7 +400,7 @@ router.get('/players', authenticate, userController.getAllPlayers);
  * @swagger
  * /users/players/{id}:
  *   get:
- *     summary: Get a player by ID
+ *     summary: Get a player with their assigned scouter
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -408,28 +408,155 @@ router.get('/players', authenticate, userController.getAllPlayers);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
- *         description: The ID of the player to retrieve
+ *         schema:
+ *           type: integer
+ *         description: The ID of the player
  *     responses:
  *       200:
- *         description: Player details
+ *         description: Player details with assigned scouter
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/User'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/PlayerWithScouter'
  *       400:
  *         description: Invalid player ID
  *       401:
  *         description: Not authenticated
- *       403:
- *         description: User exists but is not a player
  *       404:
  *         description: Player not found
  *       500:
  *         description: Server error
  */
-router.get('/players/:id', authenticate, userController.getPlayerById);
+router.get('/players/:id', authenticate, userController.getPlayerById  );
 
+  /**
+ * @swagger
+ * /users/scouters/{id}:
+ *   get:
+ *     summary: Get a scouter with all assigned players
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The ID of the scouter
+ *     responses:
+ *       200:
+ *         description: Scouter details with assigned players
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/ScouterWithPlayers'
+ *       400:
+ *         description: Invalid scouter ID
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Scouter not found
+ *       500:
+ *         description: Server error
+ */
+router.get( '/scouters/:id', authenticate, userController.getScouterById  );
+  /**
+ * @swagger
+ * /users/players/assign-scouter:
+ *   patch:
+ *     summary: Assign a player to a scouter
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AssignPlayerToScouterInput'
+ *     responses:
+ *       200:
+ *         description: Player assigned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/PlayerWithScouter'
+ *       400:
+ *         description: Invalid player or scouter ID
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Insufficient permissions
+ *       404:
+ *         description: Player or scouter not found
+ *       500:
+ *         description: Server error
+ */
+router.patch('/players/assign-scouter',  authenticate,  authorizeRoles('ADMIN', 'SCOUT'),  userController.assignPlayerToScouter  );
+  /**
+ * @swagger
+ * /users/players/{playerId}/remove-scouter:
+ *   patch:
+ *     summary: Remove a player from their assigned scouter
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: playerId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The ID of the player
+ *     responses:
+ *       200:
+ *         description: Player removed from scouter successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/PlayerWithScouter'
+ *       400:
+ *         description: Invalid player ID
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Insufficient permissions
+ *       404:
+ *         description: Player not found
+ *       500:
+ *         description: Server error
+ */
+router.patch('/players/:playerId/remove-scouter', authenticate, authorizeRoles('ADMIN', 'SCOUT'),userController.removePlayerFromScouter
+  );
 /**
  * @swagger
  * /users/{id}:
