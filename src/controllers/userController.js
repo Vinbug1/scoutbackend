@@ -177,6 +177,19 @@ const UserController = {
     // }
   },
 
+  async getUserById (req, res, next)  {
+    try {
+      const user = await userService.getUserById(req.params.id);
+  
+      return res.status(200).json({
+        success: true,
+        message: 'User fetched successfully',
+        data: user,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
   // async getPlayerById (req, res, next)  {
   //   try {
   //     const { id } = req.params;
