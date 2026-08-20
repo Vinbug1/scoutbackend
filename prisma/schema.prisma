@@ -170,6 +170,7 @@ model Profile {
   gender        String?
   country       String?
   city          String?
+  club          String?
   dob           DateTime?
   bio           String?
   createdAt     DateTime  @default(now())
