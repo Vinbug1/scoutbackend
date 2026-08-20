@@ -156,17 +156,25 @@ const UserController = {
     }
   },
   async getPlayerById (req, res, next) {
-    try {
-      const player = await userService.getPlayerById(req.params.id);
+      try {
+        const player = await userService.getPlayerById(req.params.id);
+    
+        return res.status(200).json(player);
+      } catch (error) {
+        next(error);
+      }
   
-      return res.status(200).json({
-        success: true,
-        message: 'Player fetched successfully',
-        data: player,
-      });
-    } catch (error) {
-      next(error);
-    }
+    // try {
+    //   const player = await userService.getPlayerById(req.params.id);
+  
+    //   return res.status(200).json({
+    //     success: true,
+    //     message: 'Player fetched successfully',
+    //     data: player,
+    //   });
+    // } catch (error) {
+    //   next(error);
+    // }
   },
 
   // async getPlayerById (req, res, next)  {
