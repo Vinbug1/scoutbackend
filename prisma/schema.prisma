@@ -82,48 +82,73 @@ model User {
   otpExpiry  DateTime?
   isVerified Boolean   @default(false)
 
-  // Relations
+  // Profiles
   profile      Profile?
   scoutProfile ScoutProfile?
-  videos       Video[]
-  reels        Reel[]
-  views        VideoView[]
-  reelViews    ReelView[]
-  comments     Comment[]
-  replies      Reply[]
-  ratings      Rating[]
-  followers    Follower[]    @relation("Followed")
-  following    Follower[]    @relation("Following")
-  posts        Post[]
 
-  // ✅ Like relations
+  // Media
+  videos    Video[]
+  reels     Reel[]
+  views     VideoView[]
+  reelViews ReelView[]
+
+  // Comments, replies, ratings, and posts
+  comments Comment[]
+  replies  Reply[]
+  ratings  Rating[]
+  posts    Post[]
+
+  // Followers
+  followers Follower[] @relation("Followed")
+  following Follower[] @relation("Following")
+
+  // Likes
   commentLikes CommentLike[]
   reelLikes    ReelLike[]
   replyLikes   ReplyLike[]
 
+  // Direct scout-player relationship
+  //
+  // A player can have one scouter.
+  // A scouter can have many players.
+  scouterId Int?
+
+  scouter User? @relation("ScouterPlayers", fields: [scouterId], references: [id])
+
+  players User[] @relation("ScouterPlayers")
+
   // Scout reports
-  reportsFiled      ScouterReport[]        @relation("ReportsByScouter")
-  reportsAboutMe    ScouterReport[]        @relation("ReportsAboutPlayer")
-  createdChatRooms  ChatRoom[]             @relation("ChatRoomCreator")
-  payments          Payment[]
-  rankings          Ranking[]
-  chatMessages      ChatMessage[]
-  chatRoomMembers   ChatRoomMember[]
+  reportsFiled   ScouterReport[] @relation("ReportsByScouter")
+  reportsAboutMe ScouterReport[] @relation("ReportsAboutPlayer")
+
+  // Chat rooms and messages
+  createdChatRooms ChatRoom[]       @relation("ChatRoomCreator")
+  chatMessages     ChatMessage[]
+  chatRoomMembers  ChatRoomMember[]
+
+  // Payments and rankings
+  payments Payment[]
+  rankings Ranking[]
+
+  // Challenges
   challengesCreated Challenge[]            @relation("ChallengeCreator")
   challengesJoined  ChallengeParticipant[]
 
-  pushToken        String?
-  isOnline         Boolean       @default(false)
-  lastSeenAt       DateTime?
-  blocksMade       Block[]       @relation("BlockedBy")
-  blocksTaken      Block[]       @relation("BlockedUser")
-  reportsMade      Report[]      @relation("ReportedBy")
-  messageReads     MessageRead[]
-  reportsAgainstMe Report[]      @relation("ReportedUser")
+  // Push notifications and online status
+  pushToken  String?
+  isOnline   Boolean   @default(false)
+  lastSeenAt DateTime?
 
-  // NEW — needed by the two new tables added below (spec §6.2's "delete
-  // for me" and §11/§12's delivery receipts). Without these back-relations
-  // the new models can't have a `user User @relation(...)` field.
+  // Blocks
+  blocksMade  Block[] @relation("BlockedBy")
+  blocksTaken Block[] @relation("BlockedUser")
+
+  // User reports
+  reportsMade      Report[] @relation("ReportedBy")
+  reportsAgainstMe Report[] @relation("ReportedUser")
+
+  // Message read, delivery, and deletion relations
+  messageReads            MessageRead[]
   messageDeliveryReceipts MessageDeliveryReceipt[]
   messageDeletions        MessageDeletionForUser[]
 }

@@ -382,17 +382,43 @@ const userService = {
   },
 
   async getPlayerById(id) {
-    const player = await prisma.user.findUnique({
-      where: { id },
+    const playerId = Number(id);
+  
+    if (!Number.isInteger(playerId)) {
+      throw {
+        status: 400,
+        message: 'Invalid player ID',
+      };
+    }
+  
+    const player = await prisma.user.findFirst({
+      where: {
+        id: playerId,
+        role: 'PLAYER',
+      },
       select: {
         id: true,
         email: true,
         fullname: true,
         role: true,
         createdAt: true,
+  
         profile: true,
+  
         videos: true,
         posts: true,
+  
+        scouter: {
+          select: {
+            id: true,
+            email: true,
+            fullname: true,
+            role: true,
+            createdAt: true,
+            scoutProfile: true,
+          },
+        },
+  
         _count: {
           select: {
             followers: true,
@@ -400,16 +426,213 @@ const userService = {
             videos: true,
             posts: true,
             comments: true,
+            reportsAboutMe: true,
           },
         },
       },
     });
-
-    if (!player) throw { status: 404, message: 'Player not found' };
-    if (player.role !== 'PLAYER') throw { status: 403, message: 'User is not a player' };
-
+  
+    if (!player) {
+      throw {
+        status: 404,
+        message: 'Player not found',
+      };
+    }
+  
     return player;
   },
+
+  async getScouterById(id) {
+    const scouterId = Number(id);
+  
+    if (!Number.isInteger(scouterId)) {
+      throw {
+        status: 400,
+        message: 'Invalid scouter ID',
+      };
+    }
+  
+    const scouter = await prisma.user.findFirst({
+      where: {
+        id: scouterId,
+        role: 'SCOUT',
+      },
+      select: {
+        id: true,
+        email: true,
+        fullname: true,
+        role: true,
+        createdAt: true,
+        scoutProfile: true,
+  
+        players: {
+          where: {
+            role: 'PLAYER',
+          },
+          select: {
+            id: true,
+            email: true,
+            fullname: true,
+            role: true,
+            createdAt: true,
+            profile: true,
+          },
+        },
+  
+        _count: {
+          select: {
+            players: true,
+            reportsFiled: true,
+          },
+        },
+      },
+    });
+  
+    if (!scouter) {
+      throw {
+        status: 404,
+        message: 'Scouter not found',
+      };
+    }
+  
+    return scouter;
+  },
+
+  async assignPlayerToScouter(playerId, scouterId) {
+    const player = await prisma.user.findFirst({
+      where: {
+        id: Number(playerId),
+        role: 'PLAYER',
+      },
+    });
+  
+    if (!player) {
+      throw {
+        status: 404,
+        message: 'Player not found',
+      };
+    }
+  
+    const scouter = await prisma.user.findFirst({
+      where: {
+        id: Number(scouterId),
+        role: 'SCOUT',
+      },
+    });
+  
+    if (!scouter) {
+      throw {
+        status: 404,
+        message: 'Scouter not found',
+      };
+    }
+  
+    return prisma.user.update({
+      where: {
+        id: Number(playerId),
+      },
+      data: {
+        scouter: {
+          connect: {
+            id: Number(scouterId),
+          },
+        },
+      },
+      select: {
+        id: true,
+        fullname: true,
+        role: true,
+        scouter: {
+          select: {
+            id: true,
+            fullname: true,
+            email: true,
+            role: true,
+            scoutProfile: true,
+          },
+        },
+      },
+    });
+  },
+  
+  async removePlayerFromScouter(playerId) {
+    const id = Number(playerId);
+  
+    if (!Number.isInteger(id)) {
+      throw {
+        status: 400,
+        message: 'Invalid player ID',
+      };
+    }
+  
+    const player = await prisma.user.findFirst({
+      where: {
+        id,
+        role: 'PLAYER',
+      },
+    });
+  
+    if (!player) {
+      throw {
+        status: 404,
+        message: 'Player not found',
+      };
+    }
+  
+    return prisma.user.update({
+      where: {
+        id,
+      },
+      data: {
+        scouterId: null,
+      },
+      select: {
+        id: true,
+        email: true,
+        fullname: true,
+        role: true,
+        scouter: {
+          select: {
+            id: true,
+            email: true,
+            fullname: true,
+            role: true,
+            scoutProfile: true,
+          },
+        },
+      },
+    });
+  }
+
+  // async getPlayerById(id) {
+  //   const player = await prisma.user.findUnique({
+  //     where: { id },
+  //     select: {
+  //       id: true,
+  //       email: true,
+  //       fullname: true,
+  //       role: true,
+  //       createdAt: true,
+  //       profile: true,
+  //       videos: true,
+  //       posts: true,
+  //       _count: {
+  //         select: {
+  //           followers: true,
+  //           following: true,
+  //           videos: true,
+  //           posts: true,
+  //           comments: true,
+  //         },
+  //       },
+  //     },
+  //   });
+
+  //   if (!player) throw { status: 404, message: 'Player not found' };
+  //   if (player.role !== 'PLAYER') throw { status: 403, message: 'User is not a player' };
+
+  //   return player;
+  // },
 };
 
 export default userService;

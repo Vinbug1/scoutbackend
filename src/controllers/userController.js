@@ -156,17 +156,72 @@ const UserController = {
     }
   },
 
-  async getPlayerById(req, res) {
+  async getPlayerById (req, res, next)  {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: 'Invalid player ID' });
-
+      const { id } = req.params;
+  
       const player = await userService.getPlayerById(id);
-      res.status(200).json(player);
-    } catch (err) {
-      res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+  
+      return res.status(200).json({
+        success: true,
+        message: 'Player fetched successfully',
+        data: player,
+      });
+    } catch (error) {
+      next(error);
     }
   },
+  
+  async getScouterById (req, res, next) {
+    try {
+      const { id } = req.params;
+  
+      const scouter = await userService.getScouterById(id);
+  
+      return res.status(200).json({
+        success: true,
+        message: 'Scouter fetched successfully',
+        data: scouter,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+  
+  async assignPlayerToScouter  (req, res, next)  {
+    try {
+      const { playerId, scouterId } = req.body;
+  
+      const player = await userService.assignPlayerToScouter(
+        playerId,
+        scouterId
+      );
+  
+      return res.status(200).json({
+        success: true,
+        message: 'Player assigned to scouter successfully',
+        data: player,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+  
+  async removePlayerFromScouter (req, res, next) {
+    try {
+      const { playerId } = req.params;
+  
+      const player = await userService.removePlayerFromScouter(playerId);
+  
+      return res.status(200).json({
+        success: true,
+        message: 'Player removed from scouter successfully',
+        data: player,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 };
 
 export default UserController;
