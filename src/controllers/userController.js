@@ -155,41 +155,20 @@ const UserController = {
       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
     }
   },
-  async getPlayerById (req, res, next) {
-      try {
-        const player = await userService.getPlayerById(req.params.id);
-    
-        return res.status(200).json(player);
-      } catch (error) {
-        next(error);
-      }
-  
-    // try {
-    //   const player = await userService.getPlayerById(req.params.id);
-  
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: 'Player fetched successfully',
-    //     data: player,
-    //   });
-    // } catch (error) {
-    //   next(error);
-    // }
-  },
-
-  async getUserById (req, res, next)  {
+  async getPlayerById  (req, res, next) {
     try {
-      const user = await userService.getUserById(req.params.id);
+      const user = await userService.getPlayerById(req.params.id);
   
       return res.status(200).json({
         success: true,
-        message: 'User fetched successfully',
+        message: 'Player fetched successfully',
         data: user,
       });
     } catch (error) {
       next(error);
     }
   },
+  
   // async getPlayerById (req, res, next)  {
   //   try {
   //     const { id } = req.params;
