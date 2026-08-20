@@ -155,12 +155,9 @@ const UserController = {
       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
     }
   },
-
-  async getPlayerById (req, res, next)  {
+  async getPlayerById (req, res, next) {
     try {
-      const { id } = req.params;
-  
-      const player = await userService.getPlayerById(id);
+      const player = await userService.getPlayerById(req.params.id);
   
       return res.status(200).json({
         success: true,
@@ -171,6 +168,22 @@ const UserController = {
       next(error);
     }
   },
+
+  // async getPlayerById (req, res, next)  {
+  //   try {
+  //     const { id } = req.params;
+  
+  //     const player = await userService.getPlayerById(id);
+  
+  //     return res.status(200).json({
+  //       success: true,
+  //       message: 'Player fetched successfully',
+  //       data: player,
+  //     });
+  //   } catch (error) {
+  //     next(error);
+  //   }
+  // },
   
   async getScouterById (req, res, next) {
     try {
