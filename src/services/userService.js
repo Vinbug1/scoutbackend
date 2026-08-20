@@ -381,8 +381,118 @@ const userService = {
     });
   },
 
+  // async getPlayerById(id) {
+  //   const playerId = Number(id);
+  
+  //   if (!Number.isInteger(playerId)) {
+  //     throw {
+  //       status: 400,
+  //       message: 'Invalid player ID',
+  //     };
+  //   }
+  
+  //   const player = await prisma.user.findFirst({
+  //     where: {
+  //       id: playerId,
+  //       role: 'PLAYER',
+  //     },
+  //     select: {
+  //       id: true,
+  //       email: true,
+  //       fullname: true,
+  //       role: true,
+  //       createdAt: true,
+  
+  //       profile: true,
+  
+  //       videos: true,
+  //       posts: true,
+  
+  //       // Include the player's club field if it exists in Profile
+  //       // after adding: club String?
+  //       // profile: {
+  //       //   select: {
+  //       //     id: true,
+  //       //     userId: true,
+  //       //     avatarUrl: true,
+  //       //     position: true,
+  //       //     height: true,
+  //       //     favouriteFoot: true,
+  //       //     strengths: true,
+  //       //     gender: true,
+  //       //     country: true,
+  //       //     city: true,
+  //       //     club: true,
+  //       //     dob: true,
+  //       //     bio: true,
+  //       //     createdAt: true,
+  //       //   },
+  //       // },
+  
+  //       _count: {
+  //         select: {
+  //           followers: true,
+  //           following: true,
+  //           videos: true,
+  //           posts: true,
+  //           comments: true,
+  //         },
+  //       },
+  //     },
+  //   });
+  
+  //   if (!player) {
+  //     throw {
+  //       status: 404,
+  //       message: 'Player not found',
+  //     };
+  //   }
+  
+  //   return player;
+  // },
 
   async getPlayerById(id) {
+    const playerId = Number(id);
+  
+    const player = await prisma.user.findFirst({
+      where: {
+        id: playerId,
+        role: 'PLAYER',
+      },
+      select: {
+        id: true,
+        email: true,
+        fullname: true,
+        role: true,
+        createdAt: true,
+        profile: true,
+        videos: true,
+        posts: true,
+        scouter: true,
+        _count: {
+          select: {
+            followers: true,
+            following: true,
+            videos: true,
+            posts: true,
+            comments: true,
+            reportsAboutMe: true,
+          },
+        },
+      },
+    });
+  
+    if (!player) {
+      throw {
+        status: 404,
+        message: 'Player not found',
+      };
+    }
+  
+    return player;
+  },
+  
+  async getUserById(id) {
     const userId = Number(id);
   
     if (!Number.isInteger(userId)) {
@@ -457,180 +567,8 @@ const userService = {
       };
     }
   
-    // Players use Profile.avatarUrl.
-    // Club/scout accounts use ScoutProfile.avatarUrl.
-    const avatarUrl =
-      user.profile?.avatarUrl ||
-      user.scoutProfile?.avatarUrl ||
-      null;
-  
-    return {
-      ...user,
-      avatarUrl,
-    };
+    return user;
   },
-
-  // // async getPlayerById(id) {
-  // //   const playerId = Number(id);
-  
-  // //   if (!Number.isInteger(playerId)) {
-  // //     throw {
-  // //       status: 400,
-  // //       message: 'Invalid player ID',
-  // //     };
-  // //   }
-  
-  // //   const player = await prisma.user.findFirst({
-  // //     where: {
-  // //       id: playerId,
-  // //       role: 'PLAYER',
-  // //     },
-  // //     select: {
-  // //       id: true,
-  // //       email: true,
-  // //       fullname: true,
-  // //       role: true,
-  // //       createdAt: true,
-  
-  // //       profile: true,
-  
-  // //       videos: true,
-  // //       posts: true,
-  
-  // //       // Include the player's club field if it exists in Profile
-  // //       // after adding: club String?
-  // //       // profile: {
-  // //       //   select: {
-  // //       //     id: true,
-  // //       //     userId: true,
-  // //       //     avatarUrl: true,
-  // //       //     position: true,
-  // //       //     height: true,
-  // //       //     favouriteFoot: true,
-  // //       //     strengths: true,
-  // //       //     gender: true,
-  // //       //     country: true,
-  // //       //     city: true,
-  // //       //     club: true,
-  // //       //     dob: true,
-  // //       //     bio: true,
-  // //       //     createdAt: true,
-  // //       //   },
-  // //       // },
-  
-  // //       _count: {
-  // //         select: {
-  // //           followers: true,
-  // //           following: true,
-  // //           videos: true,
-  // //           posts: true,
-  // //           comments: true,
-  // //         },
-  // //       },
-  // //     },
-  // //   });
-  
-  // //   if (!player) {
-  // //     throw {
-  // //       status: 404,
-  // //       message: 'Player not found',
-  // //     };
-  // //   }
-  
-  // //   return player;
-  // // },
-
-  // async getPlayerById(id) {
-  //   const playerId = Number(id);
-  
-  //   const player = await prisma.user.findFirst({
-  //     where: {
-  //       id: playerId,
-  //       role: 'PLAYER',
-  //     },
-  //     select: {
-  //       id: true,
-  //       email: true,
-  //       fullname: true,
-  //       role: true,
-  //       createdAt: true,
-  //       profile: true,
-  //       videos: true,
-  //       posts: true,
-  //       scouter: true,
-  //       _count: {
-  //         select: {
-  //           followers: true,
-  //           following: true,
-  //           videos: true,
-  //           posts: true,
-  //           comments: true,
-  //           reportsAboutMe: true,
-  //         },
-  //       },
-  //     },
-  //   });
-  
-  //   if (!player) {
-  //     throw {
-  //       status: 404,
-  //       message: 'Player not found',
-  //     };
-  //   }
-  
-  //   return player;
-  // },
-
-  // async getUserById(id) {
-  //   const userId = Number(id);
-  
-  //   if (!Number.isInteger(userId)) {
-  //     throw {
-  //       status: 400,
-  //       message: 'Invalid user ID',
-  //     };
-  //   }
-  
-  //   const user = await prisma.user.findUnique({
-  //     where: {
-  //       id: userId,
-  //     },
-  //     select: {
-  //       id: true,
-  //       email: true,
-  //       fullname: true,
-  //       role: true,
-  //       createdAt: true,
-  
-  //       profile: true,
-  
-  //       // Useful for club/scout accounts
-  //       scoutProfile: true,
-  
-  //       videos: true,
-  //       posts: true,
-  
-  //       _count: {
-  //         select: {
-  //           followers: true,
-  //           following: true,
-  //           videos: true,
-  //           posts: true,
-  //           comments: true,
-  //         },
-  //       },
-  //     },
-  //   });
-  
-  //   if (!user) {
-  //     throw {
-  //       status: 404,
-  //       message: 'User not found',
-  //     };
-  //   }
-  
-  //   return user;
-  // },
 
   async getScouterById(id) {
     const scouterId = Number(id);
