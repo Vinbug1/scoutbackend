@@ -395,6 +395,48 @@ router.put('/update-password', authenticate, userController.updatePassword);
  *         description: Server error
  */
 router.get('/players', authenticate, userController.getAllPlayers);
+/**
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     summary: Get any user by ID
+ *     description: Returns a player, club, scout, admin, or any other account associated with the supplied user ID. This endpoint is useful for chat participants.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The user ID
+ *     responses:
+ *       200:
+ *         description: User fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: User fetched successfully
+ *                 data:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Invalid user ID
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:id', authenticate, userController.getUserById );
 
 /**
  * @swagger
@@ -475,6 +517,7 @@ router.get('/players/:id', authenticate, userController.getPlayerById  );
  *         description: Server error
  */
 router.get( '/scouters/:id', authenticate, userController.getScouterById  );
+
   /**
  * @swagger
  * /users/players/assign-scouter:
@@ -515,6 +558,7 @@ router.get( '/scouters/:id', authenticate, userController.getScouterById  );
  *         description: Server error
  */
 router.patch('/players/assign-scouter',  authenticate,  authorizeRoles('ADMIN', 'SCOUT'),  userController.assignPlayerToScouter  );
+
   /**
  * @swagger
  * /users/players/{playerId}/remove-scouter:
