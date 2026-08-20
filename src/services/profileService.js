@@ -74,7 +74,7 @@ const profileService = {
   // =========================
   // UPDATE
   // =========================
-  async update(userId, { position, height, favouriteFoot, strengths, gender, country, city, dob, bio }) {
+  async update(userId, { position, height, favouriteFoot, strengths, gender, country, city, club, dob, bio }) {
     const existing = await prisma.profile.findUnique({ where: { userId } }); // ✅ userId
     if (!existing) throw { status: 404, message: 'Profile not found' };
 
@@ -88,6 +88,7 @@ const profileService = {
         gender,
         country,
         city,
+        club,
         dob: dob ? new Date(dob) : undefined,
         bio,
       },
