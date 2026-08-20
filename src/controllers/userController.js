@@ -181,14 +181,10 @@ const UserController = {
     try {
       const user = await userService.getUserById(req.params.id);
   
-      return res.status(200).json({
-        success: true,
-        message: 'User fetched successfully',
-        data: user,
-      });
-    } catch (error) {
-      next(error);
-    }
+      return res.status(200).json(player);
+      } catch (error) {
+        next(error);
+      }
   },
   
   // async getPlayerById (req, res, next)  {
