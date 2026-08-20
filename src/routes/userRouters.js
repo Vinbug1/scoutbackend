@@ -395,6 +395,7 @@ router.put('/update-password', authenticate, userController.updatePassword);
  *         description: Server error
  */
 router.get('/players', authenticate, userController.getAllPlayers);
+
 /**
  * @swagger
  * /users/{id}:
