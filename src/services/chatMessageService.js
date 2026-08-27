@@ -649,19 +649,26 @@ const ChatMessageService = {
         },
       });
   
-    for (const recipient of recipients) {
-      await sendPushNotification({
-        type: PushNotificationType.CHAT,
-        role: recipient.role,
-        recipientId: recipient.id,
-        title: `New message from ${newMessage.user.fullname}`,
-        body:
-          normalizedText ||
-          'Sent an attachment',
-        roomId: normalizedRoomId,
-        peerUserId: normalizedUserId,
-      });
-    }
+      for (const recipient of recipients) {
+        sendPushNotification({
+          type: PushNotificationType.CHAT,
+          role: recipient.role,
+          recipientId: recipient.id,
+          title: `New message from ${newMessage.user.fullname}`,
+          body:
+            normalizedText ||
+            'Sent an attachment',
+          roomId: normalizedRoomId,
+          peerUserId: normalizedUserId,
+        }).catch((error) => {
+          console.error(
+            `❌ Push notification failed for user ${recipient.id}:`,
+            error.message
+          );
+        });
+      }
+      
+      return newMessage;
   
     return newMessage;
   },
