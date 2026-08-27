@@ -732,35 +732,6 @@ const userService = {
     });
   }
 
-  // async getPlayerById(id) {
-  //   const player = await prisma.user.findUnique({
-  //     where: { id },
-  //     select: {
-  //       id: true,
-  //       email: true,
-  //       fullname: true,
-  //       role: true,
-  //       createdAt: true,
-  //       profile: true,
-  //       videos: true,
-  //       posts: true,
-  //       _count: {
-  //         select: {
-  //           followers: true,
-  //           following: true,
-  //           videos: true,
-  //           posts: true,
-  //           comments: true,
-  //         },
-  //       },
-  //     },
-  //   });
-
-  //   if (!player) throw { status: 404, message: 'Player not found' };
-  //   if (player.role !== 'PLAYER') throw { status: 403, message: 'User is not a player' };
-
-  //   return player;
-  // },
 };
 
 export default userService;
