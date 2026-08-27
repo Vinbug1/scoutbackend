@@ -48,6 +48,7 @@ const allowedOrigins = [
   'https://www.thescouterpro.com',
   'http://localhost:3000',        // ← add this
   'http://127.0.0.1:3000',       // optional, if you use this too
+  'https://www.thescouterpro.co'
 ];
 
 // ─── Middleware ───────────────────────────────────────────────
