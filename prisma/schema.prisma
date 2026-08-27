@@ -76,6 +76,8 @@ model User {
   fullname  String
   role      Role     @default(PLAYER)
   createdAt DateTime @default(now())
+    // Push notifications
+  pushToken String?
 
   // OTP Verification
   otp        String?
@@ -135,7 +137,6 @@ model User {
   challengesJoined  ChallengeParticipant[]
 
   // Push notifications and online status
-  pushToken  String?
   isOnline   Boolean   @default(false)
   lastSeenAt DateTime?
 
