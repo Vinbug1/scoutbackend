@@ -164,17 +164,6 @@ const UserController = {
         next(error);
       }
   
-    // try {
-    //   const player = await userService.getPlayerById(req.params.id);
-  
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: 'Player fetched successfully',
-    //     data: player,
-    //   });
-    // } catch (error) {
-    //   next(error);
-    // }
   },
 
   async getUserById  (req, res, next) {
@@ -187,21 +176,6 @@ const UserController = {
       }
   },
   
-  // async getPlayerById (req, res, next)  {
-  //   try {
-  //     const { id } = req.params;
-  
-  //     const player = await userService.getPlayerById(id);
-  
-  //     return res.status(200).json({
-  //       success: true,
-  //       message: 'Player fetched successfully',
-  //       data: player,
-  //     });
-  //   } catch (error) {
-  //     next(error);
-  //   }
-  // },
   
   async getScouterById (req, res, next) {
     try {
