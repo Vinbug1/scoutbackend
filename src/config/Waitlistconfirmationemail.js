@@ -38,7 +38,7 @@ function waitlistConfirmationEmail(firstName) {
           </div>
   
           <div style="text-align:center;">
-            <a href="https://thescouterpro.com" style="display:inline-block; background-color:#3ecfb2; color:#0b0e14; font-weight:700; font-size:14px; text-decoration:none; padding:14px 32px; border-radius:8px;">
+            <a href="www.thescouterpro.co" style="display:inline-block; background-color:#3ecfb2; color:#0b0e14; font-weight:700; font-size:14px; text-decoration:none; padding:14px 32px; border-radius:8px;">
               Visit The Scouter Pro
             </a>
           </div>
