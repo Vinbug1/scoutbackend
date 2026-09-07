@@ -76,8 +76,13 @@ model User {
   fullname  String
   role      Role     @default(PLAYER)
   createdAt DateTime @default(now())
-    // Push notifications
+
+  // Push notifications
   pushToken String?
+
+  // Notifications
+  notificationsReceived Notification[] @relation("NotificationsReceived")
+  notificationsActed    Notification[] @relation("NotificationsActed")
 
   // OTP Verification
   otp        String?
@@ -110,13 +115,11 @@ model User {
   replyLikes   ReplyLike[]
 
   // Direct scout-player relationship
-  //
   // A player can have one scouter.
   // A scouter can have many players.
   scouterId Int?
 
   scouter User? @relation("ScouterPlayers", fields: [scouterId], references: [id])
-
   players User[] @relation("ScouterPlayers")
 
   // Scout reports
@@ -136,7 +139,7 @@ model User {
   challengesCreated Challenge[]            @relation("ChallengeCreator")
   challengesJoined  ChallengeParticipant[]
 
-  // Push notifications and online status
+  // Online status
   isOnline   Boolean   @default(false)
   lastSeenAt DateTime?
 
@@ -827,4 +830,30 @@ model WaitlistEntry {
   invitedAt DateTime?
 
   @@index([createdAt])
+}
+
+model Notification {
+  id Int @id @default(autoincrement())
+
+  type String
+
+  role Role
+
+  recipientId Int
+  actorUserId Int?
+
+  title String
+  body  String
+
+  read Boolean @default(false)
+
+  data Json
+
+  createdAt DateTime @default(now())
+
+  recipient User  @relation("NotificationsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User? @relation("NotificationsActed", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([recipientId, createdAt])
+  @@index([recipientId, read])
 }
