@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma.js';
-import notificationService from './notificationService.js';
+import notificationService from './Notificationservice.js';
 
 // Never `include: { user: true }` a raw User row into an API response —
 // User carries password, otp, otpExpiry, and pushToken. Select only what
