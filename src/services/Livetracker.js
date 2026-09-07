@@ -1,6 +1,6 @@
 import ffmpeg from "fluent-ffmpeg";
 import { PassThrough } from "stream";
-import { detectFrame } from "./Roboflowclient";
+import { detectFrame } from "./Roboflowclient.js";
 
 // Keeps one active ffmpeg process per match, so we can start/stop tracking
 // per match instead of running everything globally.
