@@ -6,7 +6,7 @@ import registerMessageHandlers from './handlers/messageHandlers.js';
 import registerPresenceHandlers from './handlers/presenceHandlers.js';
 import registerTypingHandlers from './handlers/typingHandlers.js';
 import registerViewingHandlers from './handlers/viewingHandlers.js';
-import registerMatchHandlers from './handlers/matchHandlers.js'; // NEW
+import registerMatchHandlers from './handlers/Matchhandlers.js'; // NEW
 
 // Call this once, right after you create your HTTP server, and AFTER
 // Redis has already been connected via connectRedis() in app.js — e.g.:
