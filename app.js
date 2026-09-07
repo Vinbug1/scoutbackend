@@ -16,7 +16,7 @@ import chatMessageRouters from './src/routes/chatMessageRouters.js';
 import chatRoomRouters from './src/routes/chatRoomRouters.js';
 import commentRouters from './src/routes/commentRouters.js';
 import followerRouters from './src/routes/followerRouters.js';
-import notificationRouters from './src/routes/notificationRouters.js';
+import notificationRouters from './src/routes/notificationRoutes.js';
 import paymentRouters from './src/routes/paymentRouters.js';
 import postRouters from './src/routes/postRouters.js';
 import profileRouters from './src/routes/profileRouters.js';
