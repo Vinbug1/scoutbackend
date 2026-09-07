@@ -11,7 +11,7 @@ import {
   getFollowingFeed,
   recordReelView,
 } from '../services/reelService.js';
-import notificationService from '../services/Notificationservice.js';
+import notificationService from '../services/notificationService.js';
 
 const reelController = {
 

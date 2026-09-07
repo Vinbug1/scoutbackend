@@ -1,5 +1,4 @@
-import notificationService from '../services/Notificationservice.js';
-
+import notificationService from '../services/notificationService.js.js';
 // Same pattern as followerController — reject anything that isn't a
 // positive integer before it reaches Prisma.
 function parsePositiveInt(value) {
