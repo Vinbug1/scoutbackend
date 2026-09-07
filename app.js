@@ -32,7 +32,7 @@ import reelRouters from './src/routes/reelRoutes.js';
 import waitlistRouters from './src/routes/waitlistRoutes.js';
 import pushTokenRouters from './src/routes/pushTokenRouters.js';
 // 1. Add this import near your other route imports
-import trackingRouters from './src/routes/trackingRoutes.js';
+import trackingRouters from './src/routes/trackingroutes.js';
 
 
 import { initSocketServer } from './src/sockets/index.js';
