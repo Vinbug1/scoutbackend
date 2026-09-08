@@ -15,6 +15,7 @@ const activeTrackers = new Map(); // matchId -> { command, isProcessing }
  * @param {import('socket.io').Server} io
  * @param {object} options
  */
+
 function startTrackingMatch(matchId, streamUrl, io, options = {}) {
   if (activeTrackers.has(matchId)) {
     console.log(`⚠️ Tracking already running for match ${matchId}`);
