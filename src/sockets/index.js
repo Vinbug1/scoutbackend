@@ -23,6 +23,7 @@ import registerMatchHandlers from './handlers/Matchhandlers.js'; // NEW
 // This function is now synchronous (no internal Redis connect) —
 // pubClient/subClient are expected to already be connected by the time
 // this runs.
+
 export function initSocketServer(httpServer, allowedOrigins) {
   const io = new Server(httpServer, {
     cors: { origin: allowedOrigins },
