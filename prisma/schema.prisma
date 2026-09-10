@@ -103,7 +103,7 @@ model User {
   comments Comment[]
   replies  Reply[]
   ratings  Rating[]
-  posts    Post[]
+  posts Post[] @relation("UserPosts")
 
   // Followers
   followers Follower[] @relation("Followed")
@@ -486,9 +486,10 @@ model Post {
   createdAt DateTime @default(now())
   userId    Int
 
-  user     User      @relation(fields: [userId], references: [id])
+  user     User      @relation("UserPosts", fields: [userId], references: [id])
   comments Comment[]
 }
+
 
 // ─────────────────────────────────────────────
 // Followers
