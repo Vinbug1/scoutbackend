@@ -388,34 +388,74 @@ const userService = {
           select: {
             posts: true,
             followers: true,
-            // Split out per plan §5 — scouts-only follow count, so it
-            // stays usable as a "scouts are interested" quality signal
-            // once player -> player follows exist too.
-            scoutFollowers: { where: { follower: { role: 'SCOUT' } } },
             following: true,
             videos: true,
+            // Count followers where the follower's role is SCOUT
+            followers: {
+              where: { follower: { role: 'SCOUT' } } 
+            }
           },
         },
       },
     });
-
+  
     const followingSet = await getViewerFollowingSet(
       viewerId,
       players.map((p) => p.id)
     );
-
+  
     return players.map((p) => ({
       ...p,
       _count: {
-        posts: p._count.posts,
-        followers: p._count.followers,
-        scoutFollowers: p._count.scoutFollowers,
-        following: p._count.following,
-        videos: p._count.videos,
+        ...p._count,
+        scoutFollowers: p._count.followers, // Map back if needed by UI
       },
       viewerActions: { isFollowing: followingSet.has(p.id) },
     }));
   },
+  
+  // async getAllPlayers(viewerId = null) {
+  //   const players = await prisma.user.findMany({
+  //     where: { role: 'PLAYER' },
+  //     select: {
+  //       id: true,
+  //       email: true,
+  //       fullname: true,
+  //       role: true,
+  //       createdAt: true,
+  //       profile: true,
+  //       _count: {
+  //         select: {
+  //           posts: true,
+  //           followers: true,
+  //           // Split out per plan §5 — scouts-only follow count, so it
+  //           // stays usable as a "scouts are interested" quality signal
+  //           // once player -> player follows exist too.
+  //           scoutFollowers: { where: { follower: { role: 'SCOUT' } } },
+  //           following: true,
+  //           videos: true,
+  //         },
+  //       },
+  //     },
+  //   });
+
+  //   const followingSet = await getViewerFollowingSet(
+  //     viewerId,
+  //     players.map((p) => p.id)
+  //   );
+
+  //   return players.map((p) => ({
+  //     ...p,
+  //     _count: {
+  //       posts: p._count.posts,
+  //       followers: p._count.followers,
+  //       scoutFollowers: p._count.scoutFollowers,
+  //       following: p._count.following,
+  //       videos: p._count.videos,
+  //     },
+  //     viewerActions: { isFollowing: followingSet.has(p.id) },
+  //   }));
+  // },
 
   // async getPlayerById(id) {
   //   const playerId = Number(id);
