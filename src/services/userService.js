@@ -584,6 +584,77 @@ const userService = {
   //   };
   // },
 
+  // async getPlayerById(id, viewerId = null) {
+  //   const playerId = Number(id);
+  
+  //   if (Number.isNaN(playerId)) {
+  //     throw {
+  //       status: 400,
+  //       message: 'Invalid player ID',
+  //     };
+  //   }
+  
+  //   // 1. Query player details without invalid inline filter in _count
+  //   const player = await prisma.user.findFirst({
+  //     where: {
+  //       id: playerId,
+  //       role: 'PLAYER',
+  //     },
+  //     select: {
+  //       id: true,
+  //       email: true,
+  //       fullname: true,
+  //       role: true,
+  //       createdAt: true,
+  //       profile: true,
+  //       videos: true,
+  //       posts: true,
+  //       scouter: true,
+  //       _count: {
+  //         select: {
+  //           followers: true,
+  //           following: true,
+  //           videos: true,
+  //           posts: true,
+  //           comments: true,
+  //           reportsAboutMe: true,
+  //         },
+  //       },
+  //     },
+  //   });
+  
+  //   if (!player) {
+  //     throw {
+  //       status: 404,
+  //       message: 'Player not found',
+  //     };
+  //   }
+  
+  //   // 2. Compute scout-only followers separately
+  //   const scoutFollowersCount = await prisma.follower.count({
+  //     where: {
+  //       followedId: playerId,
+  //       follower: { role: 'SCOUT' },
+  //     },
+  //   });
+  
+  //   // 3. Top-level viewerActions.isFollowing
+  //   const followingSet = await getViewerFollowingSet(viewerId, [player.id]);
+  
+  //   return {
+  //     ...player,
+  //     _count: {
+  //       followers: player._count.followers,
+  //       scoutFollowers: scoutFollowersCount,
+  //       following: player._count.following,
+  //       videos: player._count.videos,
+  //       posts: player._count.posts,
+  //       comments: player._count.comments,
+  //       reportsAboutMe: player._count.reportsAboutMe,
+  //     },
+  //     viewerActions: { isFollowing: followingSet.has(player.id) },
+  //   };
+  // },
   async getPlayerById(id, viewerId = null) {
     const playerId = Number(id);
   
@@ -594,7 +665,6 @@ const userService = {
       };
     }
   
-    // 1. Query player details without invalid inline filter in _count
     const player = await prisma.user.findFirst({
       where: {
         id: playerId,
@@ -608,14 +678,13 @@ const userService = {
         createdAt: true,
         profile: true,
         videos: true,
-        posts: true,
         scouter: true,
         _count: {
           select: {
             followers: true,
             following: true,
             videos: true,
-            posts: true,
+            reels: true,
             comments: true,
             reportsAboutMe: true,
           },
@@ -630,7 +699,6 @@ const userService = {
       };
     }
   
-    // 2. Compute scout-only followers separately
     const scoutFollowersCount = await prisma.follower.count({
       where: {
         followedId: playerId,
@@ -638,8 +706,9 @@ const userService = {
       },
     });
   
-    // 3. Top-level viewerActions.isFollowing
-    const followingSet = await getViewerFollowingSet(viewerId, [player.id]);
+    const followingSet = viewerId
+      ? await getViewerFollowingSet(viewerId, [player.id])
+      : new Set();
   
     return {
       ...player,
@@ -648,14 +717,14 @@ const userService = {
         scoutFollowers: scoutFollowersCount,
         following: player._count.following,
         videos: player._count.videos,
-        posts: player._count.posts,
+        posts: player._count.reels, // number of reels
         comments: player._count.comments,
         reportsAboutMe: player._count.reportsAboutMe,
       },
       viewerActions: { isFollowing: followingSet.has(player.id) },
     };
   },
-  
+
   async getUserById(id) {
     const userId = Number(id);
   
