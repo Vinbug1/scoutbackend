@@ -14,7 +14,7 @@ const storageConfig = process.env.GCP_CREDENTIALS_JSON
       projectId: process.env.GCLOUD_PROJECT_ID,
     }
   : {
-      keyFilename: path.join(__dirname, '../../scoutimg-aa6e95184dbd.json'),
+      keyFilename: path.join(__dirname, '../../the-scouter-pro-app-508813-f00dfa6d2d10.json'),
       projectId: process.env.GCLOUD_PROJECT_ID,
     };
 
