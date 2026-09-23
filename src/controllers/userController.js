@@ -1,4 +1,5 @@
 import userService from '../services/userService.js';
+import { filterVisibleIds, getPresence } from '../services/presenceService.js';
 
 const UserController = {
 
@@ -155,6 +156,30 @@ const UserController = {
       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
     }
   },
+  // GET /api/users/:id/presence — snapshot for a profile screen; live
+  // changes come over the socket (`presence:watch` -> `presence:update`).
+  async getPresence(req, res, next) {
+    try {
+      const targetId = Number(req.params.id);
+      if (!Number.isInteger(targetId) || targetId <= 0) {
+        return res.status(400).json({ message: 'Invalid user ID' });
+      }
+      if (targetId === req.user.id) {
+        return res.status(200).json({ userId: targetId, status: 'online', lastSeenAt: null });
+      }
+
+      const [allowed] = await filterVisibleIds(req.user.id, [targetId]);
+      if (!allowed) {
+        return res.status(403).json({ message: 'Presence is only visible to followers, people you follow, and chat contacts' });
+      }
+
+      const [presence] = await getPresence(req.app.get('io'), [targetId]);
+      return res.status(200).json(presence);
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async getPlayerById (req, res, next) {
       try {
         const player = await userService.getPlayerById(req.params.id, req.user?.id);
@@ -230,5 +255,249 @@ const UserController = {
 };
 
 export default UserController;
+
+
+
+
+
+
+
+
+
+
+
+
+// import userService from '../services/userService.js';
+
+// const UserController = {
+
+//   // ===========================
+//   // AUTH
+//   // ===========================
+//   async register(req, res) {
+//     try {
+//       const result = await userService.register(req.body);
+//       res.status(201).json({ message: 'Registration successful', ...result });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   async login(req, res) {
+//     try {
+//       const result = await userService.login(req.body);
+//       res.status(200).json({ message: 'Login successful', ...result });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   // ===========================
+//   // OTP
+//   // ===========================
+//   async verifyOTP(req, res) {
+//     try {
+//       await userService.verifyOTP(req.body);
+//       res.status(200).json({ message: 'Account verified successfully!' });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   async resendOTP(req, res) {
+//     try {
+//       await userService.resendOTP(req.body);
+//       res.status(200).json({ message: 'A new OTP has been sent to your email.' });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   // ===========================
+//   // PASSWORD
+//   // ===========================
+//   async forgotPassword(req, res) {
+//     try {
+//       await userService.forgotPassword(req.body);
+//       // Always return the same message whether email exists or not
+//       res.status(200).json({ message: 'If this email exists, a reset code has been sent.' });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   async verifyResetOTP(req, res) {
+//     try {
+//       const resetToken = await userService.verifyResetOTP(req.body);
+//       res.status(200).json({
+//         message: 'OTP verified. Use the reset token to set a new password.',
+//         resetToken,
+//       });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   async resetPassword(req, res) {
+//     try {
+//       await userService.resetPassword(req.body);
+//       res.status(200).json({ message: 'Password reset successfully. You can now log in.' });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   async updatePassword(req, res) {
+//     try {
+//       await userService.updatePassword({ userId: req.user.userId, ...req.body });
+//       res.status(200).json({ message: 'Password updated successfully.' });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   // ===========================
+//   // CRUD
+//   // ===========================
+//   async getCurrentUser(req, res) {
+//     try {
+//       const user = await userService.getCurrentUser(req.user.userId);
+//       res.status(200).json(user);
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   async getUsers(req, res) {
+//     try {
+//       const users = await userService.getAll();
+//       res.status(200).json(users);
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   async getUserById(req, res) {
+//     try {
+//       const id = parseInt(req.params.id);
+//       if (isNaN(id)) return res.status(400).json({ message: 'Invalid user ID' });
+
+//       const user = await userService.getById(id);
+//       res.status(200).json(user);
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   async updateUser(req, res) {
+//     try {
+//       const id = parseInt(req.params.id);
+//       if (isNaN(id)) return res.status(400).json({ message: 'Invalid user ID' });
+
+//       const updated = await userService.update(id, req.body);
+//       res.status(200).json(updated);
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   async deleteUser(req, res) {
+//     try {
+//       const id = parseInt(req.params.id);
+//       if (isNaN(id)) return res.status(400).json({ message: 'Invalid user ID' });
+
+//       await userService.delete(id);
+//       res.status(200).json({ message: 'User deleted successfully' });
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+
+//   // ===========================
+//   // PLAYERS
+//   // ===========================
+//   async getAllPlayers(req, res) {
+//     try {
+//       const players = await userService.getAllPlayers(req.user?.id);
+//       res.status(200).json(players);
+//     } catch (err) {
+//       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
+//     }
+//   },
+//   async getPlayerById (req, res, next) {
+//       try {
+//         const player = await userService.getPlayerById(req.params.id, req.user?.id);
+    
+//         return res.status(200).json(player);
+//       } catch (error) {
+//         next(error);
+//       }
+  
+//   },
+
+//   async getUserById  (req, res, next) {
+//     try {
+//       const user = await userService.getUserById(req.params.id);
+  
+//       return res.status(200).json(user);
+//       } catch (error) {
+//         next(error);
+//       }
+//   },
+  
+  
+//   async getScouterById (req, res, next) {
+//     try {
+//       const { id } = req.params;
+  
+//       const scouter = await userService.getScouterById(id);
+  
+//       return res.status(200).json({
+//         success: true,
+//         message: 'Scouter fetched successfully',
+//         data: scouter,
+//       });
+//     } catch (error) {
+//       next(error);
+//     }
+//   },
+  
+//   async assignPlayerToScouter  (req, res, next)  {
+//     try {
+//       const { playerId, scouterId } = req.body;
+  
+//       const player = await userService.assignPlayerToScouter(
+//         playerId,
+//         scouterId
+//       );
+  
+//       return res.status(200).json({
+//         success: true,
+//         message: 'Player assigned to scouter successfully',
+//         data: player,
+//       });
+//     } catch (error) {
+//       next(error);
+//     }
+//   },
+  
+//   async removePlayerFromScouter (req, res, next) {
+//     try {
+//       const { playerId } = req.params;
+  
+//       const player = await userService.removePlayerFromScouter(playerId);
+  
+//       return res.status(200).json({
+//         success: true,
+//         message: 'Player removed from scouter successfully',
+//         data: player,
+//       });
+//     } catch (error) {
+//       next(error);
+//     }
+//   }
+// };
+
+// export default UserController;
 
 
