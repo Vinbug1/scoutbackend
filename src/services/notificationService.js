@@ -205,6 +205,43 @@ const notificationService = {
     }
   },
 
+  // "Someone you follow just came online" — fired by presenceHandlers.js
+  // when a followed user's presence flips to online. Caller (presenceHandlers)
+  // is responsible for cooldown/debounce so this isn't spammed on every
+  // reconnect; this function just fans the notification out once called.
+  async notifyFollowedUserOnline(io, userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, fullname: true },
+    });
+    if (!user) return;
+
+    const followers = await prisma.follower.findMany({
+      where: { followedId: userId },
+      select: { follower: { select: { id: true, role: true } } },
+    });
+    if (followers.length === 0) return;
+
+    const title = `${user.fullname} is online`;
+    const body = 'Active now — tap to say hi';
+
+    const BATCH = 25;
+    for (let i = 0; i < followers.length; i += BATCH) {
+      await Promise.allSettled(
+        followers.slice(i, i + BATCH).map(({ follower }) =>
+          notifyUser(io, {
+            type: PushNotificationType.ONLINE,
+            role: follower.role,
+            recipientId: follower.id,
+            actorUserId: userId,
+            title,
+            body,
+          })
+        )
+      );
+    }
+  },
+
   async list(userId, { page = 1, limit = 20 } = {}) {
     const skip = (page - 1) * limit;
     const [rows, total] = await Promise.all([
@@ -293,6 +330,9 @@ const notificationService = {
 };
 
 export default notificationService;
+
+
+
 
 
 
@@ -492,19 +532,25 @@ export default notificationService;
 //     const durationLabel = formatDuration(reel.durationSec);
 //     const body = reel.category?.title ? `${reel.category.title} · ${durationLabel}` : durationLabel;
 
-//     await Promise.allSettled(
-//       followers.map(({ follower }) =>
-//         notifyUser(io, {
-//           type: PushNotificationType.POST,
-//           role: follower.role,
-//           recipientId: follower.id,
-//           actorUserId: reel.playerId,
-//           title,
-//           body,
-//           fields: { reelId: reel.id, playerId: reel.playerId, reelIndex },
-//         })
-//       )
-//     );
+//     // Each notifyUser does several DB queries + a push. Firing one per
+//     // follower at once can exhaust the Prisma pool for popular players,
+//     // so work through them in small batches.
+//     const BATCH = 25;
+//     for (let i = 0; i < followers.length; i += BATCH) {
+//       await Promise.allSettled(
+//         followers.slice(i, i + BATCH).map(({ follower }) =>
+//           notifyUser(io, {
+//             type: PushNotificationType.POST,
+//             role: follower.role,
+//             recipientId: follower.id,
+//             actorUserId: reel.playerId,
+//             title,
+//             body,
+//             fields: { reelId: reel.id, playerId: reel.playerId, reelIndex },
+//           })
+//         )
+//       );
+//     }
 //   },
 
 //   async list(userId, { page = 1, limit = 20 } = {}) {
@@ -595,6 +641,8 @@ export default notificationService;
 // };
 
 // export default notificationService;
+
+
 
 
 
