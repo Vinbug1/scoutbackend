@@ -12,7 +12,7 @@ function previewFor(message) {
     case 'TEXT':
       return (message.text ?? '').slice(0, 120);
     case 'IMAGE':
-      return '📷 Photo';
+      return message.text ? `📷 ${message.text.slice(0, 120)}` : '📷 Photo';   // ← replace this line
     case 'VIDEO':
       return '🎥 Video';
     case 'AUDIO':
@@ -23,6 +23,24 @@ function previewFor(message) {
       return '';
   }
 }
+
+// function previewFor(message) {
+//   if (message.deletedAt) return 'This message was deleted';
+//   switch (message.type) {
+//     case 'TEXT':
+//       return (message.text ?? '').slice(0, 120);
+//     case 'IMAGE':
+//       return '📷 Photo';
+//     case 'VIDEO':
+//       return '🎥 Video';
+//     case 'AUDIO':
+//       return '🎤 Voice message';
+//     case 'FILE':
+//       return `📎 ${message.fileName ?? 'File'}`;
+//     default:
+//       return '';
+//   }
+// }
 
 async function updateLastMessagePreviewIfNeeded(roomId, messageId, preview) {
   await prisma.chatLastMessage.updateMany({
@@ -446,10 +464,10 @@ const ChatMessageService = {
                   type:
                     normalizedType,
   
-                  text:
-                    normalizedType === 'TEXT'
-                      ? normalizedText
-                      : null,
+                  text: normalizedText,
+                  //=== 'TEXT'
+                      //? normalizedText
+                      //: null,
   
                   mediaUrl:
                     normalizedMediaUrl,

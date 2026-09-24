@@ -143,6 +143,11 @@ async function startServer() {
     await connectRedis();
     console.log('✅ Connected to Redis');
 
+    // Nobody is connected to a freshly started server, so any isOnline=true
+    // left over from a crash/redeploy is stale. Single-instance only: with
+    // several instances, drop this and derive status from the sockets.
+    await prisma.user.updateMany({ where: { isOnline: true }, data: { isOnline: false } });
+
     // Wrap express app in a raw http server so Socket.io can share the port
     const httpServer = http.createServer(app);
 
@@ -182,8 +187,4 @@ process.on('SIGTERM', async () => {
   console.log('🛑 Server shut down gracefully');
   process.exit(0);
 });
-
-
-
-
 

@@ -1,4 +1,5 @@
 import userService from '../services/userService.js';
+import { filterVisibleIds, getPresence } from '../services/presenceService.js';
 
 const UserController = {
 
@@ -155,6 +156,30 @@ const UserController = {
       res.status(err.status ?? 500).json({ message: err.message ?? 'Server error' });
     }
   },
+  // GET /api/users/:id/presence — snapshot for a profile screen; live
+  // changes come over the socket (`presence:watch` -> `presence:update`).
+  async getPresence(req, res, next) {
+    try {
+      const targetId = Number(req.params.id);
+      if (!Number.isInteger(targetId) || targetId <= 0) {
+        return res.status(400).json({ message: 'Invalid user ID' });
+      }
+      if (targetId === req.user.id) {
+        return res.status(200).json({ userId: targetId, status: 'online', lastSeenAt: null });
+      }
+
+      const [allowed] = await filterVisibleIds(req.user.id, [targetId]);
+      if (!allowed) {
+        return res.status(403).json({ message: 'Presence is only visible to followers, people you follow, and chat contacts' });
+      }
+
+      const [presence] = await getPresence(req.app.get('io'), [targetId]);
+      return res.status(200).json(presence);
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async getPlayerById (req, res, next) {
       try {
         const player = await userService.getPlayerById(req.params.id, req.user?.id);
@@ -230,5 +255,6 @@ const UserController = {
 };
 
 export default UserController;
+
 
 
